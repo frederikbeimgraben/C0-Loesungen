@@ -1,5 +1,0 @@
-hangmanutils.c0
-fibonacci.c0
-hangman.c0
-grayscale_matrix.c0
-kernel.c0

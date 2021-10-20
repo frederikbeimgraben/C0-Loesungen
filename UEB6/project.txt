@@ -1,4 +1,0 @@
-bresenham.c0
-bitset.c0
-sparseset.c0
-benchmark.c0

@@ -1,2 +1,0 @@
-automaton.c0
-coprimes.c0
