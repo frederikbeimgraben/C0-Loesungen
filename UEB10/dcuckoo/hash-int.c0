@@ -1,0 +1,32 @@
+/* Use a d-cuckoo hash table to maintain a set of integers */
+
+#use <string>
+#use <util>
+
+typedef int* entry;  /* (pointer to) hash table entry */
+typedef int  key;    /* entries are their own keys */
+
+int hash(int fn, key k)
+/*@ requires fn >= 0 && fn < 31; @*/
+{
+  /* simplistic hash function family:
+     rotate k by fn bits to the right
+  */
+  return (k >> fn) | (k << (32 - fn) % 32) & 0x7FFFFFFF;
+}
+
+bool key_equal(key k1, key k2) {
+  return k1 == k2;
+}
+
+key entry_key(entry e)
+/*@ requires e != NULL; @*/
+{
+  return *e;     /* the element *is* the key */
+}
+
+string entry_string(entry e)
+/*@ requires e != NULL; @*/
+{
+  return string_fromint(*e);
+}

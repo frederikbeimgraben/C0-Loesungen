@@ -1,0 +1,194 @@
+#use <conio>
+#use <rand>
+#use <clock>
+
+/* Checks if the 2-dimensional `int`-Array `matrix` has the dimensions 
+ * `int[n][m]` using C0-dynamic checks. 
+ * If so it returns `true` - otherwise the Program is stopped 
+ */
+bool shape(int[][] matrix, int n, int m) {
+    /*@assert \length(matrix) == n; @*/
+    for (int i = 0; i < n; i++) {
+        /*@assert \length(matrix[i]) == m; @*/
+    }
+    return true;
+}
+
+/* Checks if the 2-dimensional `int`-Array `matrix` has the dimensions 
+ * `int[n][m]` or above (`int[k > n][l > m]`) using C0-dynamic checks. 
+ * If so it returns `true` - otherwise the Program is stopped 
+ */
+bool in_range(int[][] matrix, int n, int m) {
+    /*@assert \length(matrix) > n; @*/
+    for (int i = 0; i < n; i++) {
+        /*@assert \length(matrix[i]) > m; @*/
+    }
+    return true;
+}
+ 
+/* Generates a 2-dimensional `int`-Array with `n` rows and `m` 
+ * columns (`int[n][m]`), of which each cell is populated by an
+ * random integer.
+ *
+ * `random(int n, int m, rand_t gen)` takes the following arguments:
+ *  - `int n` number of rows
+ *  - `int m` number of columns
+ *  - `rand_t gen` rng seed
+ */
+int[][] random(int n, int m, rand_t gen) 
+/*@ensures shape(\result, n, m); @*/
+{
+    int[][] res = alloc_array(int[], n);
+    for (int l = 0; l < n; l++) {
+        res[l] = alloc_array(int, m);
+        for (int r = 0; r < m; r++) {
+            res[l][r] = rand(gen);
+        }
+    }
+    return res;
+}
+
+/* Prints a given `matrix` with `n` rows and `m` columns 
+ * (`int[][]`) to the command line.
+ *
+ * Rows are separated by newlines (`'\n'`).
+ *
+ * Columns are separated by tabulars (`'\t'`). 
+ */
+void printmatrix(int[][] matrix, int n, int m) 
+/*@requires shape(matrix, n, m); @*/
+{
+    for (int l = 0; l < n; l++) {
+        for (int r = 0; r < m; r++) {
+            printint(matrix[l][r]);
+            printchar('\t');
+        }
+        printchar('\n');
+    }
+}
+
+/* Checks the equality of two matrices (`int[][]`) `a` and `b` of
+ * the same size `n`x`m`.
+ */
+bool equal(int[][] a,  int[][] b, int n, int m) 
+/*@requires shape(a, n, m) && shape(b, n, m); @*/
+{
+    bool equal = true;
+    for (int l = 0; l < n; l++) {
+        for (int r = 0; r < m; r++) {
+            equal = equal && a[l][r] == b[l][r];
+        }
+    }
+    return equal;
+}
+
+/* Takes matrix (`int[][]`) `matrix` with `n` rows and `m` columns and 
+ * returns it´s transposition with `m` rows and `n` columns.
+ */
+int[][] transpose(int[][] matrix, int n, int m) 
+/*@requires shape(matrix, n, m); @*/
+/*@ensures shape(\result, m, n); @*/
+{
+    int[][] res = alloc_array(int[], m);
+    for (int r = 0; r < m; r++) {
+        res[r] = alloc_array(int, n);
+        for (int l = 0; l < n; l++) {
+            res[r][l] = matrix[l][r];
+        }
+    }
+    return res;
+}
+
+/* Helper for `multiply`.
+ *
+ * Generates the Value of an element *eᵢₖ* within the matrix product
+ * of `a` and `b` (`p` with `an > i` rows and `bm > k` columns) 
+ * (where `b` has `m` columns).
+ */
+int cell(int[][] a, int[][] b, int m, int i, int k)
+/*@requires in_range(a, i, m-1) && in_range(b, m-1, k); @*/
+{
+    int r = 0;
+    for (int j = 0; j < m; j++) {
+        r += a[i][j] * b[j][k];
+    }
+    return r;
+}
+
+/* Multiplies two matrices `a` with `an` rows and `am` columns and 
+ * `b` with `bn` rows and `bm` columns.
+ * To work `am` must be equal to `bn`.
+ * The returned (multiplication) matrix has `an` rows and `bm` columns.
+ */
+int[][] multiply(int[][] a, int an, int am, int[][] b, int bn, int bm) 
+/*@requires shape(a, an, am) && shape(b, bn, bm); @*/
+/*@requires am == bn; @*/
+/*@ensures shape(\result, an, bm); @*/
+{
+    int[][] res = alloc_array(int[], an);
+    for (int i = 0; i < an; i++) {
+        res[i] = alloc_array(int, bm);
+        for (int k = 0; k < bm; k++) {
+            res[i][k] = cell(a, b, bm, i, k);
+        }
+    }
+    return res;
+}
+
+/* Checks if `multiply(id, d, d, matrix, d, d) == matrix` for 
+ * `100` random matrices.
+ */
+bool random_mult_neutral(int[][] id, int d) {
+    rand_t gen = init_rand(now());
+    bool res = true;
+    for (int i = 0; i < 100; i++) {
+        int[][] rnd = random(d, d, gen);
+        int[][] mlt = multiply(id, d, d, rnd, d, d);
+        res = res && equal(rnd, mlt, d, d);
+    }
+    return res;
+}
+
+/* Returns a matrix, that when multiplied with another matrix 
+ * returns exactly the same matrix.
+ * This matrix (`identity`) is popolated with zeros, where row and
+ * column are different and ones where they are equal. e.g.:
+ * ```
+ * identity(3)
+ * // 1 0 0
+ * // 0 1 0
+ * // 0 0 0
+ * ```
+ */
+int[][] identity(int d) 
+/*@ensures transpose(\result, d, d) == \result; @*/
+/*@ensures random_mult_neutral(\result, d); @*/
+{
+    int[][] res = alloc_array(int[], d);
+    for (int l = 0; l < d; l++) {
+        res[l] = alloc_array(int, d);
+        for (int r = 0; r < d; r++) {
+            res[l][r] = r == l ? 1 : 0;
+        }
+    }
+    return res;
+}
+
+// Main function with a few tests
+int main() {
+    rand_t gen = init_rand(10);
+    int an = 2; 
+    int am = 3;
+    int bn = 3; 
+    int bm = 2;
+    int[][] rdma = random(an, am, gen);
+    int[][] rdmb = random(bn, bm, gen);
+    printmatrix(rdma, an, am);
+    println("");
+    printmatrix(rdmb, bn, bm);
+    println("");
+    int[][] mlt = multiply(rdma, an, am, rdmb, bn, bm);
+    printmatrix(mlt, an, bm);
+    println("");
+    return 0;
+}

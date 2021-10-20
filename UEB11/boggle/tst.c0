@@ -1,0 +1,186 @@
+/* Ternary Search Tries (TSTs) */
+
+#use <string>
+
+/// I changed the definition of `trie` by placing the typedef before the defini-
+/// tion and thus replacing every `struct trie*` by `trie` inside it.
+typedef struct trie* trie;
+struct trie {
+  char key;              // current letter
+  bool complete;         // is this a complete word already?
+  trie left;             // stores words continuing with letters < key
+  trie middle;           //             -"-         after letter key
+  trie right;            //             -"-         with letters > key
+};
+
+//typedef struct tst* tst;
+struct tst {
+  trie root;             //  root of the trie
+};
+
+/* is s a non-empty string of letters 'a'...'z'? */
+bool is_word(string s)
+/*@ requires 0 < string_length(s); @*/
+{
+  char[] cs = string_to_chararray(s);
+
+  for (int i = 0; cs[i] != '\0'; i++)
+    if (!('a' <= cs[i] && cs[i] <= 'z'))
+      return false;
+
+  return true;
+}
+
+/* forward declaration, implementation below */
+bool is_trie(trie t);
+
+/* key stored in trie t has to be in range (lower, upper) */
+bool inside_range(trie t, char lower, char upper)
+{
+  /* in an empty trie, no keys are outside the range */
+  if (t == NULL)
+    return true;
+
+  if (!(lower < t->key && t->key < upper))
+    return false;
+
+  return inside_range(t->left, lower, t->key)
+         &&
+         is_trie(t->middle)
+         &&
+         inside_range(t->right, t->key, upper);
+}       
+
+/* does trie t respect the ordering invariant? */
+bool is_trie(trie t) {
+  return inside_range(t, char_chr(char_ord('a') - 1),   /* -∞ */
+                         char_chr(char_ord('z') + 1));  /* +∞ */
+}
+
+/* does TST t respect the ordering invariant? */
+bool is_tst(tst t)
+/*@ requires t != NULL; @*/    
+{
+  return is_trie(t->root);
+}
+
+/* TASK 1: Is `s` a prefix of any word in `t` */
+bool tst_has_prefix(tst t, string s) 
+//@requires is_tst(t);
+//@requires t != NULL;
+{
+    trie tmp = t->root;
+    int i = 0;
+    while (tmp != NULL && i < string_length(s)) {
+        char c = string_charat(s, i);
+        if (c < tmp->key)
+            tmp = tmp->left;
+        else if (c > tmp->key)
+            tmp = tmp->right;
+        else {
+            if (i == string_length(s) - 1)
+                return true; // Similiar to trie_search but with `return true;`
+                             // Also isn´t recursive.
+            i++;
+            tmp = tmp->middle;
+        }
+    }
+    return false;
+}
+
+/* create a new, empty TST */
+tst tst_new()
+/*@ ensures is_tst(\result); @*/
+{
+  tst t = alloc(struct tst);
+
+  t->root = NULL;
+
+  return t;
+}
+
+/* search for string s in trie t
+   (current character at position i in s)
+*/
+bool trie_search(trie t, string s, int i)
+/*@ requires is_trie(t); @*/
+/*@ requires is_word(s); @*/
+/*@ requires 0 <= i && i < string_length(s); @*/
+{
+  char c;
+
+  if (t == NULL)
+    return false;
+
+  c = string_charat(s, i);
+
+  if (c == t->key) {
+    /* matched the last character in s? */
+    if (i == string_length(s) - 1)
+      return t->complete;  // succcess iff s is a COMPLETE word in t
+
+    return trie_search(t->middle, s, i + 1);
+  }
+  else if (c < t->key)
+        return trie_search(t->left, s, i);
+  else
+    /*@ assert c > t->key; @*/
+    return trie_search(t->right, s, i);
+}
+
+/* search for key s in TST t */
+bool tst_search(tst t, string s)
+/*@ requires is_tst(t);  @*/
+/*@ requires is_word(s); @*/
+/*@ ensures  is_tst(t);  @*/
+{
+  return trie_search(t->root, s, 0);
+}
+
+/* insert string s into trie t
+   (current character at position i in s)
+*/
+trie trie_insert(trie t, string s, int i)
+/*@ requires is_trie(t); @*/
+/*@ requires 0 <= i && i < string_length(s); @*/
+{
+  char c;
+
+  c = string_charat(s, i);   /* c = c_i */
+
+  if (t == NULL) {
+      t = alloc(struct trie);
+      t->key      = c;
+      t->complete = false;  // ⎫
+      t->left     = NULL;   // ⎬ NB. these are the types' default values
+      t->middle   = NULL;   // ⎮     (initialization not needed)
+      t->right    = NULL;   // ⎭
+  }
+
+  if (c == t->key) {
+    if (i == string_length(s) - 1) {
+      t->complete = true;
+      return t;
+    }
+
+    /* recursively insert character at position i+1 in s */
+    t->middle = trie_insert(t->middle, s, i + 1);
+  }
+  else if (c < t->key)
+         t->left = trie_insert(t->left, s, i);
+  else
+    /*@ assert c > t->key; @*/
+    t->right = trie_insert(t->right, s, i);
+
+  return t;
+}
+
+/* insert string s into trie t */
+void tst_insert(tst t, string s)
+/*@ requires is_tst(t);  @*/
+/*@ requires is_word(s); @*/
+/*@ ensures  is_tst(t);  @*/
+{
+  t->root = trie_insert(t->root, s, 0); // start with character at pos 0
+}
+

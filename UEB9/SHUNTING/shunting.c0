@@ -1,0 +1,103 @@
+// Uebungsblatt 09, Aufgabe 1 (shunting.zip)
+/*
+    Command: `cc0 -L . -w -d -x shunting.c0`
+*/
+
+#use "elem-int.c0"
+#use <stack>
+#use <conio>
+
+// Move the top element from stack `a` to stack `b`
+void move(stack a, stack b, string as, string bs) 
+//@requires !stack_is_empty(a);
+//@ensures  !stack_is_empty(b);
+{
+    printf("Move %d from %s to %s\n", stack_top(a), as, bs);
+    stack_push(b, stack_pop(a));
+}
+
+/* Shunting algorithm for 3 stacks 
+ * (a little shorter than the suggestion)
+ */
+void shunt(stack a, stack b, stack c)
+//@ensures stack_is_empty(a);
+//@ensures stack_is_empty(b);
+{
+    bool e = stack_is_empty(a);
+  
+    while (!stack_is_empty(a))
+    {
+        move(a, b, "A", "B");
+  
+        while (!stack_is_empty(c) && stack_top(c) < stack_top(b))
+            move(c, a, "C", "A");
+        
+        move(b, c, "B", "C");
+    }
+
+    //@assert e || !stack_is_empty(c);
+}
+
+// Copy a stack for the `printstack_erode`-Function
+stack copy(stack a) 
+//@ensures stack_is_empty(a) || !stack_is_empty(\result);
+//@ensures stack_is_empty(a) || stack_top(a) == stack_top(\result);
+{
+    stack r = stack_new();
+    stack c = stack_new();
+    while (!stack_is_empty(a))
+        stack_push(c, stack_pop(a));
+    while (!stack_is_empty(c)) {
+        stack_push(r, stack_top(c));
+        stack_push(a, stack_pop(c));
+    }
+    return r;
+}
+
+// Print a stack whilst eroding it.
+void printstack_erode(stack s) {
+    print("[ ");
+    while (!stack_is_empty(s))
+        printf(" %d ", stack_pop(s));
+    print(" ]\n");
+}
+
+// Print a stack.
+void printstack(stack s) {
+    printstack_erode(copy(s));
+}
+
+// Main
+int main() {
+    stack a = stack_new();
+    stack b = stack_new();
+    stack c = stack_new();
+    stack_push(a, 3);
+    stack_push(a, 7);
+    stack_push(a, 6);
+    stack_push(a, 4);
+    stack_push(a, 1);
+    stack_push(a, 2);
+    stack_push(a, 5);
+
+    println("Before:");
+    print("  A: ");
+    printstack(a);
+    print("  B: ");
+    printstack(b);
+    print("  C: ");
+    printstack(c);
+    print("\n");
+
+    shunt(a, b, c);
+
+    println("\nAfter:");
+    print("  A: ");
+    printstack(a);
+    print("  B: ");
+    printstack(b);
+    print("  C: ");
+    printstack(c);
+
+    return 0;
+}

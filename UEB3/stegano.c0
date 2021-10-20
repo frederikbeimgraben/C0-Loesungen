@@ -1,0 +1,191 @@
+#use <img>
+#use <util>
+#use <conio>
+
+/* Returns an `int`-matrix with `height` rows and `width` columns 
+ * containing all pixel values of the image_data `int`-array.
+ * The returned array is accessable via `pmatrix[y, x]`.
+ */
+int[][] pixel_matrix(int[] pixels, int height, int width) {
+    int[][] res = alloc_array(int[], height);
+    for (int y = 0; y < height; y++) {
+        res[y] = alloc_array(int, width);
+        for (int x = 0; x < width; x++) {
+            res[y][x] = pixels[
+                y * width + x
+            ];
+        }
+    }
+    return res;
+}
+
+/* Creates a new `image_t` from the pixel values in the pixel matrix 
+ * `matrix` with `height` rows and `width` columns.
+ */
+image_t image_from_matrix(int[][] matrix, int height, int width) {
+    image_t res = image_create(width, height);
+    int[] data = image_data(res);
+    printint(width);
+    print("/");
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            data[y * width + x] = matrix[y][x];
+        }
+        
+    }
+    return res;
+}
+
+/* Checks if the 2-dimensional `int`-Array `matrix` has the dimensions 
+ * `int[n][m]` using C0-dynamic checks. 
+ * If so it returns `true` - otherwise the Program is stopped 
+ */
+bool shape(int[][] matrix, int n, int m) {
+    /*@assert \length(matrix) == n; @*/
+    for (int i = 0; i < n; i++) {
+        /*@assert \length(matrix[i]) == m; @*/
+    }
+    return true;
+}
+
+/* Checks the equality of two matrices (`int[][]`) `a` and `b` of
+ * the same size `n`x`m`.
+ */
+bool equal(int[][] a,  int[][] b, int n, int m) 
+/*@requires shape(a, n, m) && shape(b, n, m); @*/
+{
+    bool equal = true;
+    for (int l = 0; l < n; l++) {
+        for (int r = 0; r < m; r++) {
+            equal = equal && a[l][r] == b[l][r];
+        }
+    }
+    return equal;
+}
+
+/* Checks the equality of two images (`image_t`) `im1` and `im2` and
+ * returns `true` if equal otherwise `false`.
+ */
+bool im_equal(image_t im1, image_t im2)
+{
+    if (
+        image_height(im1) != image_height(im2) ||
+        image_width(im1) != image_width(im2)
+    ) {
+        return false;
+    }
+    int h = image_height(im1);
+    int w = image_width(im1);
+    return equal(
+        pixel_matrix(image_data(im1), h, w),
+        pixel_matrix(image_data(im2), h, w), 
+        h, 
+        w
+    );
+}
+
+/* Returnes the argb value of `src` with the encoded form of `msg` 
+ * stored in the r₁, g₁ and b₁ bits.
+ */
+int encode_pixel(int src, int msg) 
+/*@ensures (src & 0xFF000000) == (\result & 0xFF000000); @*/
+{
+    /*
+        .       = src-data
+        t, h, n = msg-data
+        Es wird außerdem davon ausgegangen, 
+        dass der Alpha-Channel immer 0xFF ist.
+
+            1111............    (SRC)
+        AND 1111111011101110    (~0x10101)
+        OR
+            1111tttthhhhnnnn    (MSG)
+        AND 0000000100010001    (0x10101)
+            ----------------
+            1111...0...0...0    (SRC & ~0x10101)
+        OR  0000000t000h000n    (MSG &  0x10101)
+            ----------------
+            1111...t...h...n    ((msg & 0x10101) | (src & ~0x10101))
+    */
+    return msg & 0x10101 | (src & ~0x10101);
+}
+
+/* Extracts the encoded form of the message from the r₁, g₁ and b₁ bits 
+ * of `enc` and returns their rgba representation.
+ */
+int decode_pixel(int enc) 
+/*@ensures (\result & 0xFF000000) == 0xFF000000; @*/
+{
+    /*
+        .       = src-data
+        t, h, n = msg-data
+        Es wird außerdem davon ausgegangen, 
+        dass der Alpha-Channel immer 0xFF ist.
+
+            1111...t...h...n    (enc)
+        AND 0001000100010001    (0x1010101)
+        *   0000000000001111    (0xFF)
+            ----------------
+            0001000t000h000n    (enc & 0x1010101)
+        *   0000000000001111    (0xFF)
+            ----------------
+            1111tttthhhhnnnn    (0x1010101 & enc) * 0xFF
+
+    */
+    // Neue kürzeste Lösung?
+    return (0x10101 & enc) * 0xFF | 0xFF000000;
+}
+
+/* Hides the image `message` within the r₁, g₁ and b₁ bits 
+ * of `source` and returns the resulting image.
+ * `message` and `source` must have the same size.
+ */
+image_t stegano_encode(image_t source, image_t message) 
+/*@requires image_height(source) == image_height(message) &&
+            image_width(source)  == image_width(message); @*/
+/*@ensures  image_height(source) == image_height(\result) &&
+            image_width(source)  == image_width(\result); @*/
+{
+    int w = image_width(source);
+    int h = image_height(source);
+    int[] mat_s = image_data(source);
+    int[] mat_m = image_data(message);
+    image_t res = image_create(w, h);
+    int[] data  = image_data(res);
+    for (int p = 0; p < w*h; p++) {
+        data[p] = encode_pixel(mat_s[p], mat_m[p]);
+    }
+    return res;
+}
+
+/* Extracts the image `message` from within the r₁, g₁ and b₁ bits 
+ * of `source` and returns the message.
+ */
+image_t stegano_decode(image_t encoding) 
+/*@ensures  image_height(encoding) == image_height(\result) &&
+            image_width(encoding)  == image_width(\result); @*/
+{
+    int w = image_width(encoding);
+    int h = image_height(encoding);
+    int[] mat_e = image_data(encoding);
+    image_t res = image_create(w, h);
+    int[] data  = image_data(res);
+    for (int p = 0; p < w*h; p++) {
+        data[p] = decode_pixel(mat_e[p]);
+    }
+    return res;
+}
+
+
+// Main function with a few tests
+int main() {
+    println("`main()` is commented out. please edit file-names first");
+    // image_t img = image_load("src.png");
+    // image_t msg = image_load("msg.png");
+    // image_t enc = stegano_encode(img, msg);
+    // image_t dec = stegano_decode(enc);
+    // /*@assert im_equal(msg, dec); @*/
+    // image_save(enc, "enc.png");
+    // image_save(dec, "dec.png");
+    return 0;
+}

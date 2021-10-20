@@ -1,0 +1,176 @@
+#use <curses>
+#use <string>
+
+/* Checks if the `bool`-matrix `matrix` has `height` rows and
+ * `width` columns.
+ */
+bool shape_bool(bool[][] matrix, int height, int width)
+/*@requires \length(matrix) == height; @*/
+{
+  for (int row = 0; row < height; row++) {
+    /*@assert \length(matrix[row]) == width; @*/
+  }
+  return true;
+}
+
+/* Mirrors x into the range `[x, mx)` if it exceeds it. 
+ * `%` would´ve probably been easier...
+ */
+int clmp(int x, int mx) 
+//@ensures \result < mx && \result >= 0;
+{
+    while (x >= mx)
+        x -= mx;
+    while (x < 0)
+        x += mx;
+    return x;
+}
+
+/* Converts a string `s` into a `bool`-array where `'#'` equals `true`
+ * and every other character equals `false`.
+ */
+bool[] bools_from_string(string s)
+//@ensures \length(\result) == string_length(s);
+{
+    bool[] states = alloc_array(bool, string_length(s));
+    for (int i = 0; i < string_length(s); i++)
+        states[i] = string_charat(s, i) == '#';
+    return states;
+}
+
+/* Converts a `string`-array `cells` of length `height` to a `bool`-
+ * matrix with `shape(matrix, height, width)` where `'#'` equals `true`
+ * and every other character equals `false`.
+ */
+bool[][] state_from_cells(string[] cells, int width, int height)
+//@ensures shape_bool(\result, height, width);
+{
+    bool[][] states = alloc_array(bool[], height);
+    for (int y = 0; y < height; y++)
+        states[y] = bools_from_string(cells[y]);
+    return states;
+}
+
+/* Counts all neighbors of the cell at `x, y` that are set `true` within the
+ * `bool`-matrix `state` with `shape(matrix, height, width)`.
+ */
+int count_neighbors(int x, int y, bool[][] state, int width, int height) 
+//@requires x < width && y < height;
+//@requires shape_bool(state, height, width); 
+//@ensures \result <= 8 && \result >= 0;
+{
+    int sum = 0;
+    for (int ix = -1; ix <= 1; ix++)
+        for (int iy = -1; iy <= 1; iy++)
+            if (
+                !(ix == 0 && iy == 0) &&
+                state[clmp(iy+y, height)][clmp(ix+x, width)]
+            ) sum++;
+    return sum;
+}
+
+/* Calculates the next state of a cell based on it´s current value 
+ * and the number of it´s neighbors that are set with `true`.
+ */
+bool next(bool cell, int neighbors) 
+//@ensures neighbors <= 8 && neighbors >= 0;
+{
+    return (
+        (  cell  && (neighbors == 2 || neighbors == 3)) ||
+        ((!cell) &&  neighbors == 3) 
+    );
+}
+
+/* Calculates the state of the next generation based on the current state.
+ */
+bool[][] game_of_life(bool[][] state, int width, int height) 
+//@requires shape_bool(state, height, width);
+//@ensures  shape_bool(\result, height, width);
+{
+    bool[][] nxstate = alloc_array(bool[], height);
+    for (int y = 0; y < height; y++) {
+        nxstate[y] = alloc_array(bool, width);
+        for (int x = 0; x < width; x++)
+            nxstate[y][x] = next(
+                state[y][x], 
+                count_neighbors(
+                    x, 
+                    y, 
+                    state, 
+                    width, 
+                    height
+                )
+            );
+    }
+    return nxstate;   
+}
+
+/* Displays a new generation with every pressed character (ASCII 0x20 - 0x7E).
+ * Stops the simulation if ENTER (0x0A) is pressed. 
+ * Keys such as arrows or CTRL+... dont have a ASCII representation and therefore
+ * move the simulation forward by 3 steps.
+ */
+void run(bool[][] state, int width, int height) 
+//@requires shape_bool(state, height, width);
+{
+    window_t win = c_initscr();
+    c_curs_set(0);
+
+    int gen = 1;
+
+    // Why use a seperate Function if you can just compare the ASCII codes?
+    while (c_getch() != 0x0A) {
+        // Clear the screen
+        c_wclear(win);
+        // Print border
+        for (int y = 0; y < height+2; y++) {
+            for (int x = 0; x < width+2; x++) {
+                c_wmove(win, y, x);
+                if (y == 0 || y == height+1)
+                    c_waddch(win, (x == 0 || x == width+1) ? 0x2B : 0x2D);
+                else if (x == 0 || x == width+1)
+                    c_waddch(win, 0x7C); // Vertical line '|'
+            }
+        }
+
+        // Print content
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                c_wmove(win, y+1, x+1);
+                c_waddch(
+                    win,
+                    state[y][x] ? 0x23 : 0x20
+                    // chr(0x23) == '#'
+                    // chr(0x20) == ' '
+                );
+            }
+        }
+
+        // Print generation number
+        c_wmove(win, height+2, 0);
+        c_waddstr(win, "Generation #");
+        c_waddstr(win, string_fromint(gen));
+        c_wrefresh(win);
+
+        // Generate new state
+        state = game_of_life(state, width, height);
+        gen++;
+    }
+
+    c_curs_set(1);
+    c_wclear(win);
+}
+
+// Main function with a test simulation.
+int main() {
+    int w = 5;
+    int h = 5;
+    string[] init_state = alloc_array(string, h);
+    init_state[0] = "     ";
+    init_state[1] = "  #  ";
+    init_state[2] = "   # ";
+    init_state[3] = " ### ";
+    init_state[4] = "     ";
+    run(state_from_cells(init_state, w, h), w, h);
+    return 0;
+}

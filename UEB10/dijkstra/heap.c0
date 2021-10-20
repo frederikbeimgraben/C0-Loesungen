@@ -1,0 +1,213 @@
+/* Priority Queues (heap-based implementation) */
+
+
+struct heap {
+  int     capacity;    /* maximum number of nodes in heap */
+  int     next;        /* next available node in heap */
+  helem[] heap;        /* representation of binary tree (of elements) */
+};
+
+/* representing binary trees in terms of an array */
+
+/* root node */
+int root() {
+  return 1;
+}
+
+/* determine parent node of node n */
+int parent(int n) {
+  return n / 2;
+}
+
+/* determine left child node of node n */
+int lchild(int n) {
+  return 2 * n;
+}
+
+/* determine right child node of node n */
+int rchild(int n) {
+  return 2 * n + 1;
+}
+
+
+/* does h represent a proper heap? (check heap invariant) */
+bool is_heap(heap h)
+/*@requires h != NULL; @*/
+/*@requires \length(h->heap) == h->capacity; @*/
+/*@requires root() <= h->next && h->next <= h->capacity; @*/
+{
+  for (int i = root(); i < h->next; i++)
+    if (i != root())
+      if (compare(h->heap[parent(i)], h->heap[i]) > 0)
+        return false;
+
+  return true;
+}
+
+/* does h represent a proper heap?
+   (NB: node n and its parent may violate heap invariant)
+*/
+bool is_heap_except_above(heap h, int n)
+/*@requires h != NULL; @*/
+/*@requires \length(h->heap) == h->capacity; @*/
+/*@requires root() <= h->next && h->next <= h->capacity; @*/
+{
+  for (int i = root(); i < h->next; i++)
+    if (i != root() && i != n)
+      if (compare(h->heap[parent(i)], h->heap[i]) > 0)
+        return false;
+
+  return true;
+}
+
+/* does h represent a proper heap?
+   (NB: node n and its children may violate heap invariant)
+*/
+bool is_heap_except_below(heap h, int n)
+/*@requires h != NULL; @*/
+/*@requires \length(h->heap) == h->capacity; @*/
+/*@requires root() <= h->next && h->next <= h->capacity; @*/
+{
+  for (int i = root(); i < h->next; i++)
+    if (i != root() && parent(i) != n)
+      if (compare(h->heap[parent(i)], h->heap[i]) > 0)
+        return false;
+
+  return true;
+}
+
+/* create a new empty heap of capacity c */
+heap heap_new(int c)
+/*@requires c > 0; @*/
+/*@ensures  is_heap(\result) && heap_empty(\result); @*/
+{
+  heap h = alloc(struct heap);
+
+  h->heap = alloc_array(helem, c + 1);  /* array index 0 unused */
+  h->capacity = c + 1;
+  h->next = root();
+
+  return h;
+}
+
+/* is heap h empty (no elements stored)? */
+bool heap_empty(heap h)
+/*@requires is_heap(h); @*/
+{
+  return h->next == root();
+}
+
+/* has heap h been filled to capacity already? */
+bool heap_full(heap h)
+/*@requires is_heap(h); @*/
+{
+  return h->next == h->capacity;
+}
+
+
+/* auxiliary function: swap elements i,j of array xs */
+void swap(helem[] xs, int i, int j)
+/*@requires 0 <= i && i < \length(xs); @*/
+/*@requires 0 <= j && j < \length(xs); @*/
+{
+  helem e = xs[i];
+  xs[i] = xs[j];
+  xs[j] = e;
+}
+
+/* recursively move node n up in the heap,
+   restoring the heap invariant as we go
+*/
+void sift_up(heap h, int n)
+/*@requires root() <= n && n <= h->next; @*/
+/*@requires is_heap_except_above(h, n);  @*/
+/*@ensures  is_heap(h);                  @*/
+{
+  /* cannot sift up beyond root (root has no parent) */
+  if (n == root())
+    return;
+
+  /* heap variant violated between parent(n) and n? */
+  if (compare(h->heap[parent(n)], h->heap[n]) > 0) {
+    swap(h->heap, parent(n), n);
+    sift_up(h, parent(n));
+  }
+}
+
+/* insert new element e into heap h */
+void heap_insert(heap h, helem e)
+/*@requires is_heap(h) && !(heap_full(h));  @*/
+/*@ensures  is_heap(h) && !(heap_empty(h)); @*/
+{
+  /* place e in next available node according to shape invariant */
+  h->heap[h->next] = e;
+
+  /* NB:
+     placing e like this may violate the heap invariant Ⓗ:
+     h is a heap EXCEPT JUST ABOVE the new entry e at h->next
+  */
+  /*@assert is_heap_except_above(h, h->next); @*/
+  sift_up(h, h->next);
+
+  h->next++;
+}
+
+
+/* recursively move node n down in the heap,
+   restoring the heap invariant as we go */
+void sift_down(heap h, int n)
+/*@requires root() <= n && n <= h->next; @*/
+/*@requires is_heap_except_below(h, n);  @*/
+/*@ensures  is_heap(h);                  @*/
+{
+  int child;
+
+  /* if n is a leaf, cannot sift down further */
+  if (lchild(n) >= h->next)
+    return;
+
+  /* select smaller of both children
+     (only consider right child if present) */
+  child = (rchild(n) < h->next &&
+           compare(h->heap[lchild(n)], h->heap[rchild(n)]) > 0) ?
+          rchild(n) :
+          lchild(n);
+
+  /* heap variant violated between n and child? */
+  if (compare(h->heap[n], h->heap[child]) > 0) {
+    swap(h->heap, n, child);
+    sift_down(h, child);
+  }
+}
+
+/* return and remove the minimal element in heap h */
+helem heap_delmin(heap h)
+/*@requires is_heap(h);       @*/
+/*@requires !(heap_empty(h)); @*/
+/*@ensures  is_heap(h);       @*/
+{
+  helem min = h->heap[root()];
+
+  h->next--;
+  h->heap[root()] = h->heap[h->next];
+
+  /* NB:
+     replacing the root like this may violate the heap invariant Ⓗ:
+     h is a heap EXCEPT JUST BELOW the new root
+  */
+  /*@assert is_heap_except_below(h, root()); @*/
+  sift_down(h, root());
+
+  return min;
+}
+
+/* peek at the minimal element in heap h */
+helem heap_min(heap h)
+/*@requires is_heap(h);       @*/
+/*@requires !(heap_empty(h)); @*/
+/*@ensures  is_heap(h);       @*/
+{
+  return h->heap[root()];
+}
+
+

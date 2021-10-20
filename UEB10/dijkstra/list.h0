@@ -1,0 +1,15 @@
+/* List interface */
+
+/* the abstract list type */
+struct list;
+typedef struct list* list;
+
+/* operations */
+bool list_is_empty(list l);           /* check if list is empty */
+
+list list_new()                       /* create new empty list */
+  /*@ensures list_is_empty(\result); @*/;
+
+list list_prepend(list l, lelem e);  /* place element e at start of l */
+
+bool list_contains(list l, lelem e); /* check if l contains e */

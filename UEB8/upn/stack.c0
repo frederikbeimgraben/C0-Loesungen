@@ -1,0 +1,95 @@
+/* List implementation */
+struct slist {
+  elem          elem;
+  struct slist* next;
+};
+
+
+/* Stacks (LIFO) implementation */
+
+/* stack implementation (top/bottom pointers) */
+struct stack  {
+  slist top;
+  slist bottom;
+};
+
+/* can we reach `to' if we start traversing from `from'? */
+/* NB: endless iteration in presence of cycles! */
+bool sreachable(slist from, slist to) {
+  for (slist walk = from; walk != to; walk = walk->next)
+    if (walk == NULL)
+      return false;
+  return true;
+}
+
+/* check the data structure invariant for stack s:
+   bottom is sreachable from top
+*/
+bool is_stack(stack s)
+/*@requires s != NULL; @*/
+{
+  return s->top    != NULL &&
+         s->bottom != NULL &&
+         sreachable(s->top, s->bottom);
+}
+
+/* create a new empty stack */
+stack stack_new()
+/*@ensures is_stack(\result); @*/
+/*@ensures stack_is_empty(\result); @*/
+{
+    slist top = alloc(struct slist);   /* elem/next remain at their defaults */
+    stack s = alloc(struct stack);
+
+    s->top    = top;
+    s->bottom = top;
+
+    return s;
+}
+
+/* does s contain elements? */
+bool stack_is_empty(stack s)
+/*@requires is_stack(s); @*/
+{
+    return s->top == s->bottom;
+}
+
+/* push e onto the top of stack s */
+stack stack_push(stack s, elem e)
+/*@requires is_stack(s);              @*/
+/*@ensures  is_stack(\result);        @*/
+/*@ensures  !stack_is_empty(\result); @*/
+{
+    slist top = alloc(struct slist);
+
+    top->elem = e;
+    top->next = s->top;
+
+    s->top = top;
+
+    return s;
+}
+
+/* remove and return element at stack top */
+elem stack_pop(stack s)
+/*@requires is_stack(s);        @*/
+/*@requires !stack_is_empty(s); @*/
+/*@ensures  is_stack(s);        @*/
+{
+    elem e = s->top->elem;
+
+    /* /!\ side effect on s */
+    s->top = s->top->next;  /* s->top now unreachable: garbage collect */
+
+    return e;
+}
+
+/* inspect element at stack top */
+elem stack_top(stack s)
+/*@requires is_stack(s); @*/
+/*@requires !stack_is_empty(s); @*/
+/*@ensures  is_stack(s); @*/
+{
+    return s->top->elem;
+}
+

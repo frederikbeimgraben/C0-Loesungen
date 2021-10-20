@@ -1,0 +1,56 @@
+#use <conio>
+#use "printarray.c0"
+
+
+/* Are the elements of xs[lower...upper-1] in ascending order? */
+bool is_sorted(int[] xs, int lower, int upper)
+/*@ requires 0 <= lower && lower <= upper && upper <= \length(xs); @*/
+{
+  for (int i = lower; i < upper - 1; i++)
+    if (! (xs[i] <= xs[i + 1]))
+      return false;
+  return true;
+}
+
+// Swaps the elements at position `a` and `b` within `xs` of length `l`
+void swap(int[] xs, int l, int a, int b) 
+//@requires \length(xs) == l;
+//@requires a < l && b < l;
+{
+    int tmp  = xs[a];
+    xs[a] = xs[b];
+    xs[b]   = tmp;
+}
+
+/* Sorts the array `xs` of length `len` using the insertion sort
+ * algorithm.
+ */
+void insertionsort(int[] xs, int len) 
+//@requires \length(xs) == len;
+//@ensures is_sorted(xs, 0, len);
+//@ensures \length(xs) == len;
+{
+    /* Eine loop-invariant ist hier eigentlich vollkommen redundant */
+    for (int i = 1; i < len && !is_sorted(xs, 0, len); i++)
+        //@loop_invariant is_sorted(xs, 0, i);
+        for (int c = i-1; c >= 0 && xs[c] > xs[c+1]; c--)
+            swap(xs, len, c+1, c);
+}
+
+// Main function with tests
+int main() {
+    int[] test_array = alloc_array(int, 7);
+    test_array[0] = 7;
+    test_array[1] = 1;
+    test_array[2] = 6;
+    test_array[3] = 5;
+    test_array[4] = 4;
+    test_array[5] = 3;
+    test_array[6] = 9;
+    
+    printintarray(test_array, 7);
+    insertionsort(test_array, 7);
+    printintarray(test_array, 7);
+    print("\n");
+    return 0;
+}

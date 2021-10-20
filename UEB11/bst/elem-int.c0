@@ -1,0 +1,18 @@
+/* Use a BST to store integer keys */
+
+#use <string>
+
+/* we will store (pointers to) integers in the search trees */
+typedef int* elem;
+
+int compare(elem e1, elem e2)
+/*@ requires e1 != NULL && e2 != NULL; @*/
+{
+    return *e1 < *e2 ? -1 : *e1 > *e2 ? 1 : 0;
+}
+
+string elem_string(elem e)
+/*@ requires e != NULL; @*/
+{
+  return string_fromint(*e);
+}

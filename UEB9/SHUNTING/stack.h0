@@ -1,0 +1,30 @@
+/* Stacks (LIFO) interface */
+
+/* element type */
+#use <string>
+
+// !! HAS TO BE CHANGED !! 
+//typedef string elem;
+
+/* the abstract stack type */
+struct stack;
+typedef struct stack* stack;
+
+
+/* operations */
+bool stack_is_empty(stack s)        /* does s contain elements? */
+  /*@ requires s != NULL; @*/;
+
+stack stack_new()                   /* create new empty stack */
+  /*@ ensures \result != NULL && stack_is_empty(\result); @*/;
+
+elem stack_pop(stack s)             /* remove element at top of s */
+  /*@ requires s != NULL && !stack_is_empty(s); @*/;
+
+elem stack_top(stack s)             /* inspect element at top of s */
+  /*@ requires s != NULL && !stack_is_empty(s); @*/;
+
+stack stack_push(stack s, elem e)   /* place element e on top of s */
+  /*@ requires s != NULL;                           @*/
+  /*@ ensures  !stack_is_empty(\result);            @*/
+  /*@ ensures  stack_top(\result) == e;             @*/; // !! HAS TO BE CHANGED

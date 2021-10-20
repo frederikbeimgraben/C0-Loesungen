@@ -1,0 +1,265 @@
+// Uebungsblatt 8, Aufgabe 2 (upn.zip)
+/* [`upn.zip`]
+    Execute using:
+    $ cc0 -L . -w -d -x upn.c0
+*/
+
+#use "elem-token.c0"
+#use <stack>
+#use <queue>
+#use <string>
+#use <conio>
+
+// Checks if `c` is within `cs` of length `cl`
+bool cont(char c, char[] cs, int cl) 
+//@requires \length(cs) >= cl;
+{
+    for (int i = 0; i < cl; i++)
+        if (cs[i] == c)
+            return true;
+    return false;
+}
+
+// Checks if `c` is within `s`
+bool s_cont(char c, string s) {
+    return cont(c, string_to_chararray(s), string_length(s));
+}
+
+// Checks if `t` only contains chars that are also in `s`
+bool only(string t, string s) {
+    for (int i = 0; i < string_length(t); i++)
+        if (!s_cont(string_charat(t, i), s))
+            return false;
+    return true;
+}
+
+// Returns a char´s int-representation
+int chr_to_int(char c) 
+//@requires s_cont(c, "0123456789");
+//@ensures \result <= 9 && \result >= 0;
+{
+    string nm = "0123456789";
+    for (int i = 0; i < 10; i++)
+        if (c == string_charat(nm, i))
+            return i;
+    return 0;
+}
+
+// Returns a int´s char-representation
+char int_to_chr(int i) 
+//@requires i <= 9 && i >= 0;
+//@ensures s_cont(\result, "0123456789");
+{
+    return string_charat("0123456789", i);
+}
+
+// Returns the precedence of token `t`
+int prec(token t) 
+//@requires t->op;
+//@ensures  \result >= 0 && \result <= 2;
+{
+    char c = t->operator;
+    if      (s_cont(c, "+-")) return 1;
+    else if (s_cont(c, "*/")) return 2;
+    else                      return 0;
+}
+
+// Converts an allowed char `c` to it´s token representation
+token char_to_token(char c)
+//@requires s_cont(c, "0123456789*/+-()");
+//@ensures \result->op || \result->num || \result->paren;
+//@ensures \result->op != \result->num != \result->paren;
+{
+    token t = alloc(struct token);
+    t->op = s_cont(c, "*/+-");
+    t->operator = t->op ? c : '\0';
+
+    t->num = s_cont(c, "0123456789");
+    t->number = t->num ? chr_to_int(c) : 0;
+
+    t->paren = s_cont(c, "()");
+    t->parenthesis = t->paren ? c : '\0';
+
+    return t;
+}
+
+// Converts a token `t` to it´s char-representation
+char token_to_char(token t)
+//@requires t->op || t->num || t->paren;
+//@requires t->op != t->num != t->paren;
+//@ensures s_cont(\result, "0123456789*/+-()");
+{
+    if (t->op   ) return t->operator;
+    if (t->num  ) return int_to_chr(t->number);
+    if (t->paren) return t->parenthesis;
+    return '\0';
+}
+
+// Converts a string `expr` to a queue containing it´s characters.
+queue expr_to_queue(string expr)
+//@requires only(expr, "0123456789*/+-()");
+//@ensures  string_length(expr) == 0 || !queue_is_empty(\result);
+{
+    queue q = queue_new();
+    for (int i = 0; i < string_length(expr); i++)
+        queue_enq(q, char_to_token(string_charat(expr, i)));
+    return q;
+}
+
+// Shunting Yard algorithm
+queue shunting_yard(queue e)
+//@requires e != NULL;
+//@requires !queue_is_empty(e);
+//@ensures \result != NULL;
+{
+    stack s = stack_new();
+    queue o = queue_new();
+
+    while (!queue_is_empty(e)) {
+        token z = queue_deq(e);
+
+        if (z->num) 
+            queue_enq(o, z);
+        else if (z->op) {
+            while (
+                !stack_is_empty(s)  && 
+                stack_top(s)->op    &&
+                prec(z) <= prec(stack_top(s))
+            ) queue_enq(o, stack_pop(s));
+            stack_push(s, z);
+        }
+        else if (z->paren && z->parenthesis == '(')
+            stack_push(s, z);
+        else {
+            while (stack_top(s)->op)
+                queue_enq(o, stack_pop(s));
+            stack_pop(s);
+        }
+    }
+    while (!stack_is_empty(s))
+        queue_enq(o, stack_pop(s));
+    return o;
+}
+
+// Converts a queue to it´s string representation
+string queue_to_expr(queue q) 
+//@requires q != NULL;
+{   
+    string o = "";
+    while (!queue_is_empty(q)) {
+        o = string_join(
+            o,
+            string_fromchar(
+                token_to_char(queue_deq(q))
+            )
+        );
+    }
+    return o;
+}
+
+/* Converts an expression in infix-notation
+ * into postfix notation.
+ */
+string infix_to_upn(string expr)
+//@requires only(expr, "0123456789*/+-()");
+//@ensures only(\result, "0123456789*/+-");
+//@ensures string_length(\result) <= string_length(expr);
+//@ensures only(\result, expr);
+{
+    queue upn = shunting_yard(
+        expr_to_queue(expr)
+    );
+    return queue_to_expr(upn);
+}
+
+// Prints out the result of `infix_to_upn` on `s` if `v` == `true` (verbose)
+void test(string s, bool v) 
+//@requires only(s, "0123456789*/+-()");
+{
+    string r = infix_to_upn(s);
+    if (v) printf("`%s` -> `%s`\n", s, r);
+}
+
+// Maps the ints [0, 1, 2, 3] to ['+', '-', '*', '/']
+char op_code(int i) 
+//@requires i >= 0 && i < 4;
+{
+    if (i < 4)
+        return string_charat("+-*/", i);
+    return ' ';
+}
+
+int main()
+{
+    // Stimmt die Umwandlung von String to Queue und umgekehrt?
+    /*@assert string_equal(
+                  queue_to_expr(expr_to_queue("*/+-()")), 
+                  "*/+-()"
+              ); @*/
+    /*@assert string_equal(
+                  queue_to_expr(expr_to_queue("0123456789")), 
+                  "0123456789"
+              ); @*/
+
+    // Stimmt die Präzedenz?
+    //@assert prec(char_to_token('/')) == 2;
+    //@assert prec(char_to_token('*')) == 2;
+    //@assert prec(char_to_token('+')) == 1;
+    //@assert prec(char_to_token('-')) == 1;
+
+    // Ein paar manuelle Tests
+    test("1*2", true); // Zwei zahlen + Operator
+    test("2*(5-3)", true); // Klammer rechts
+    test("(5-3)/2", true); // Klammer links
+    test("2*5-3",   true); // `Strich-` und `Punktrechnung`
+    test("2-5+3",   true); // Zwei `Strichrechnungen`
+    test("(2-5)*(2+5)", true); // Zwei Klammern (innen: Strich, außen: punkt)
+    test("(2/5)*(2+5)", true); // Zwei Klammern (gemischt)
+    test("(2/5)*(2+5*3)", true); // Zwei Operatoren in Klammer
+    test("(2+5)*(2*(5+3*2))", true); // Klammer in Klammer
+    test("0", true); // Einzelne Zahl
+    test("(0)", true); // Einzelne Zahl in Klammern
+    test("()", true); // Klammern
+
+    // Automatische Tests
+
+    // Tests für alle möglichen Situationen der Form `a{op}(b{op}c)`
+    // Testet nur, ob Exceptions (errors) entstehen, verbotene Zeichen in
+    // der UPN landen oder conditions fehlschlagen.
+    for (int oa = 0; oa < 4; oa++)
+        for (int ob = 0; ob < 4; ob++)
+            for (int a = 0; a < 10; a++)
+                for (int b = 0; b < 10; b++)
+                    for (int c = 0; c < 10; c++)
+                        test(
+                            format(
+                                "%c%c(%c%c%c)",
+                                int_to_chr(a),
+                                op_code(oa),
+                                int_to_chr(b),
+                                op_code(ob),
+                                int_to_chr(a)
+                            ),
+                            false
+                        );
+
+    // Tests für alle möglichen Situationen der Form `(a{op}b){op}c`
+    for (int oa = 0; oa < 4; oa++)
+        for (int ob = 0; ob < 4; ob++)
+            for (int a = 0; a < 10; a++)
+                for (int b = 0; b < 10; b++)
+                    for (int c = 0; c < 10; c++)
+                        test(
+                            format(
+                                "(%c%c%c)%c%c",
+                                int_to_chr(a),
+                                op_code(oa),
+                                int_to_chr(b),
+                                op_code(ob),
+                                int_to_chr(a)
+                            ),
+                            false
+                        );
+
+    return 0;
+}

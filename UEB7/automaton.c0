@@ -1,0 +1,286 @@
+// UEB 7, Aufg. 1 (automaton.c0); 
+// BEIMGRABEN, Frederik Matti; Abg. Mi. 23.06.21
+// DFA ≡ Deterministic Finite Automaton 
+// (≡ Deterministischer Endlicher Automat)
+
+#use <string>
+#use <conio>
+#use <util>
+
+typedef struct state* state;
+typedef struct list*  list;
+typedef char input_type;
+
+/* Represents a machine state with transitions saved in `transitions` and
+ * `is_end` determining if it´s a (valid) end state.
+ */
+struct state {
+    bool is_end;
+    list transitions;
+};
+
+/* Contains the transitions of (e.g.) a state as a recursive list.
+ */
+struct list {
+    input_type c;
+    state s;
+    list next;
+};
+
+// Create a new state. (Valid) End state if `is_end == true`
+state create_state(bool is_end) 
+//@ensures \result != NULL;
+{
+    state res = alloc(struct state);
+    res->is_end = is_end;
+    res->transitions = alloc(struct list);
+    return res;
+}
+
+/* Get the next state based on the current state `s` and the
+ * currently read character `symbol`
+ */
+state goto_state(state s, input_type symbol)
+//@requires s != NULL;
+{
+    list transitions = s->transitions;
+    while (transitions != NULL) {
+        if (transitions->c == symbol)
+            return transitions->s;
+        transitions = transitions->next;
+    }
+    return NULL;
+}
+
+/* Adds a transition assigned to a read character `symbol` and a 
+ * following state `n` to a previous state `s`
+ */
+void add_transition(state s, input_type symbol, state n) 
+//@requires s != NULL;
+//@requires goto_state(s, symbol) == NULL;
+//@ensures  s->transitions->s == goto_state(s, symbol);
+{
+    list next = alloc(struct list);
+    next->next = s->transitions;
+    next->s = n;
+    next->c = symbol;
+    s->transitions = next;
+}
+
+/* Checks if an input string `input` leads to a valid end state
+ * and thus is accepted by the DFA.
+ */
+bool accept(state s, string input) 
+// Keine Conditions nötig! `s` und `input` können beliebig sein.
+{
+    for (int i = 0; i < string_length(input) && s != NULL; i++)
+        s = goto_state(s, string_charat(input, i));
+    return s != NULL && s->is_end;
+}
+
+/* Constructs an DFA designed to only accept strings representing
+ * floating point number in the format `[\+\-]?[0-9]+\.[0-9]+` (REGEX)
+ * e.g.: -123.56
+ */
+state automaton_for_float() 
+//@ensures \result != NULL;
+{
+    string acc_s = "1234567890";
+    state s5 = create_state(true);
+    state s4 = create_state(false);
+    state s3 = create_state(true);
+    state s2 = create_state(false);
+    state s1 = create_state(false);
+    
+    add_transition(s3, '.', s4);
+    add_transition(s1, '+', s2);
+    add_transition(s1, '-', s2);
+
+    for (int i = 0; i < string_length(acc_s); i++) {
+        add_transition(s1, string_charat(acc_s, i), s3);
+        add_transition(s5, string_charat(acc_s, i), s5);
+        add_transition(s4, string_charat(acc_s, i), s5);
+        add_transition(s3, string_charat(acc_s, i), s3);
+        add_transition(s2, string_charat(acc_s, i), s3);
+    }
+
+    return s1;
+}
+
+// Constructs a DFA that only accepts `input` as input
+state automaton_for_input(string input) 
+//@ensures \result != NULL;
+{
+    state current = create_state(true);
+    for (int i = string_length(input) - 1; i >= 0; i--) {
+        state last = current;
+        current = create_state(false);
+        add_transition(current, string_charat(input, i), last);
+    }
+    return current;
+}
+
+// Max len of the strings within `inputs` of length `len`.
+int max_len(string[] inputs, int len) 
+//@requires \length(inputs) == len;
+{
+    int mx = 0;
+    for (int i = 0; i < len; i++)
+        mx = max(string_length(inputs[i]), mx);
+    return mx;
+}
+
+// Min len of the strings within `inputs` of length `len`.
+int min_len(string[] inputs, int len) 
+//@requires \length(inputs) == len;
+{
+    int mx = int_max();
+    for (int i = 0; i < len; i++)
+        mx = min(string_length(inputs[i]), mx);
+    return mx;
+}
+
+/* Is there already a path until node `n`? 
+ * If so return it. Otherwise return a new state.
+ * Lets `automaton_for_inputs` create (dynamic) branches.
+ */
+state equal_until(state s, string str, int n) 
+//@requires s != NULL;
+//@ensures \result != NULL;
+{
+    state st = s;
+    int i = 0;
+    while (st != NULL && i < n) {
+        st = goto_state(st, string_charat(str, i));
+        i++;
+    }
+    return st == NULL ? create_state(string_length(str) == n) : st;
+}
+
+// Constructs a DFA that accepts all strings within `inputs` of length `len`
+state automaton_for_inputs(string[] inputs, int len) 
+//@requires \length(inputs) == len;
+//@ensures \result != NULL;
+{
+    state initial = create_state(min_len(inputs, len) == 0);
+    for (int s = 0; s < len; s++) {
+        string input = inputs[s];
+        state last = initial;
+        state curr;
+        for (int i = 0; i < string_length(input); i++) {
+            curr = equal_until(initial, input, i);
+            if (goto_state(last, string_charat(input, i)) == NULL)
+                add_transition(last, string_charat(input, i), curr);
+            last = curr;
+        }
+    }
+    return initial;
+}
+
+// Main function with a few tests. *(redundant comment)*
+int main() {
+    print("Checks for `automaton_for_float()`: ");
+
+    print("\n \"2.50\": \t");
+    printbool(accept(automaton_for_float(), "2.50"));
+
+    print("\n \"-2.50\":\t");
+    printbool(accept(automaton_for_float(), "-2.50"));
+    
+    print("\n \"-4\":   \t");
+    printbool(accept(automaton_for_float(), "-4"));
+
+    print("\n \"+42\":  \t");
+    printbool(accept(automaton_for_float(), "+42"));
+    
+    print("\n \"123.\": \t");
+    printbool(accept(automaton_for_float(), "123."));
+    
+    print("\n \".50\":  \t");
+    printbool(accept(automaton_for_float(), ".50"));
+    
+    print("\n \"-\":    \t");
+    printbool(accept(automaton_for_float(), "-"));
+    
+    print("\n \"\":     \t");
+    printbool(accept(automaton_for_float(), ""));
+    
+    print("\n \"a2.50\":\t");
+    printbool(accept(automaton_for_float(), "a2.50"));
+
+    print("\n \"2.50a\":\t");
+    printbool(accept(automaton_for_float(), "2.50a"));
+
+    print("\n\n");
+
+    print("Checks for `automaton_for_input()`: \n(input = \"foobar\")");
+    string input = "foobar";
+
+    print("\n \"foobar\":\t");
+    printbool(accept(automaton_for_input(input), "foobar"));
+
+    print("\n \"foo\":   \t");
+    printbool(accept(automaton_for_input(input), "foo"));
+
+    print("\n \"bar\":   \t");
+    printbool(accept(automaton_for_input(input), "bar"));
+
+    print("\n \"\":      \t");
+    printbool(accept(automaton_for_input(input), ""));
+
+    print("\n\n(input = \"r2d2\")");
+    input = "r2d2";
+
+    print("\n \"foobar\": \t");
+    printbool(accept(automaton_for_input(input), "foobar"));
+
+    print("\n \"r2\":     \t");
+    printbool(accept(automaton_for_input(input), "r2"));
+
+    print("\n \"r2d2\":   \t");
+    printbool(accept(automaton_for_input(input), "r2d2"));
+
+    print("\n \"\":       \t");
+    printbool(accept(automaton_for_input(input), ""));
+    
+    print("\n\n(input = \"\")");
+    input = "";
+
+    print("\n \"foobar\":\t");
+    printbool(accept(automaton_for_input(input), "foobar"));
+
+    print("\n \"r2d2\":   \t");
+    printbool(accept(automaton_for_input(input), "r2d2"));
+
+    print("\n \"\":       \t");
+    printbool(accept(automaton_for_input(input), ""));
+
+    print("\n \"*+~\":    \t");
+    printbool(accept(automaton_for_input(input), "*+~"));
+
+    print("\n\n[Bonus] Checks for `automaton_for_inputs()`:");
+    string[] inputs = alloc_array(string, 5);
+    inputs[0] = "foobar";
+    inputs[1] = "r2d2";
+    inputs[2] = "automat";
+    inputs[3] = "0";
+    inputs[4] = "";
+
+    print("\ninputs = [\"foobar\", \"r2d2\", \"automat\", \"0\", \"\"]\n");
+
+    print("\n \"foobar\":\t");
+    printbool(accept(automaton_for_inputs(inputs, 5), "foobar"));
+
+    print("\n \"r2d2\":   \t");
+    printbool(accept(automaton_for_inputs(inputs, 5), "r2d2"));
+
+    print("\n \"\":       \t");
+    printbool(accept(automaton_for_inputs(inputs, 5), ""));
+
+    print("\n \"*+~\":    \t");
+    printbool(accept(automaton_for_inputs(inputs, 5), "*+~"));
+
+    print("\n\n");
+
+    return 0;
+}

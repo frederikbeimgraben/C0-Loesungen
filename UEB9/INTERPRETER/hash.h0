@@ -1,0 +1,40 @@
+/* Hash table interface */
+
+/* Hash table interface (client side):
+   - types key, entry
+   - functions:
+*/
+
+/* hash bucket index for key k */
+int hash(key k);
+/* are keys k1, k2 equal? */
+bool key_equal(key k1, key k2);
+/* extract key from entry e */
+key entry_key(entry e)
+  /*@ requires e != NULL; @*/;
+
+/* debugging only: map entry to printable string (hash table printing) */
+string entry_string(entry e)
+  /*@ requires e != NULL; @*/;
+
+
+/* Hash table interface (library side) */
+
+struct ht;               /* hash table internals not revealed here */
+typedef struct ht* ht;   /* the hash table itself */
+
+/* create new hash table of capacity c */
+ht ht_new(int c)
+  /*@ requires c > 0;           @*/
+  /*@ ensures  \result != NULL; @*/;
+/* insert (or update) entry e in table ht, O(1) avg */
+void ht_insert(ht h, entry e)
+  /*@ requires h != NULL; @*/
+  /*@ requires e != NULL; @*/;
+/* entry (or NULL) for key k in table ht, O(1) avg */
+entry ht_search(ht h, key k)
+  /*@ requires h != NULL; @*/;
+
+/* debugging only: print hash table */
+void printht(ht h)
+  /*@ requires h != NULL; @*/;

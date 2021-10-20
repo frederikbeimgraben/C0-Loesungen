@@ -1,0 +1,240 @@
+#use <string>
+#use <curses>
+#use <util>
+
+typedef struct point* point;
+typedef struct line* line;
+
+// 2D point
+struct point {
+    int x;
+    int y;
+};
+
+// Line of `l` 2D points
+struct line {
+    point[] path;
+    int l;
+};
+
+// Make a new point with coordinates `(x, y)`
+point make_point(int x, int y) 
+//@requires x >= 0 && y >= 0;
+//@ensures \result->x == x && \result->y == y;
+{
+    point p = alloc(struct point);
+    p->x = x;
+    p->y = y;
+    return p;
+}
+
+// Create a new Line with length 0
+line init_line() 
+//@ensures \result->l == 0;
+{
+    line l = alloc(struct line);
+    l->l = 0;
+    return l;
+}
+
+// Add a point `p` to the existing line `l`
+void append_line(line l, point p) 
+//@requires \length(l->path) == l->l;
+//@ensures l->path[l->l-1] == p;
+//@ensures \length(l->path) == l->l;
+{
+    point[] path = alloc_array(point, l->l+1);
+    for (int i = 0; i < l->l; i++)
+        path[i] = l->path[i];
+    path[l->l] = p;
+    l->path = path;
+    l->l++;
+}
+
+// Draw a point `p` to the terminal at pos. `(p->x, p->y)` using curses
+void draw_point(window_t w, point p) 
+//@requires p->x >= 0 && p->y >= 0;
+{
+    c_wmove(w, p->y, p->x);
+    c_waddch(w, 0x2A);
+}
+
+// Draw a line `l` to the terminal using `draw_point` (curses)
+void draw_line(window_t w, line l) 
+//@requires \length(l->path) == l->l;
+{
+    for (int i = 0; i < l->l; i++)
+        draw_point(w, l->path[i]);
+}
+
+// Get the sign of x (0 -> 0; -n -> -1; n -> 1)
+int sgn(int x) 
+//@ensures \result * x >= 0;
+{
+    return x == 0 ? 0 : x / abs(x);
+}
+
+/* Use the bresenham algorithm to interpolate a line 
+ * from the two points `p0` and `p1`
+ */
+line bresenham(point p0, point p1) 
+//@requires p0->x >= 0 && p0->y >= 0;
+//@requires p1->x >= 0 && p1->y >= 0;
+//@ensures \length(\result->path) == \result->l;
+{
+    line l = init_line();
+    int x0 = p0->x;
+    int x1 = p1->x;
+    
+    int y0 = p0->y;
+    int y1 = p1->y;
+    
+    int dx = abs(p1->x - p0->x);
+    int ix = sgn(p1->x - p0->x);
+    int dy = abs(p1->y - p0->y);
+    int iy = sgn(p1->y - p0->y);
+
+    int e1 = (dy < dx ? dx : -dy) / 2;
+    int e2 = 0;
+
+    bool br = false;
+    int i = 0;
+
+    while (!(br)) {
+        append_line(
+            l,
+            make_point(x0, y0)
+        );
+
+        br = x0 == x1 && y0 == y1;
+
+        e2 = e1;
+
+        if (e2 > -dx) {
+            e1 -= dy;
+            x0 += ix;
+        }
+
+        if (e2 < dy) {
+            e1 += dx;
+            y0 += iy;
+        }
+
+        i++;
+    }
+
+    return l;
+}
+
+/* Move `p` by `incx` on the x-axis and `incy` on the y-axis
+ * p->█ + inc█ must be greater or equal to 0.
+ */
+void move(point p, int incx, int incy) 
+//@requires p->x >= 0 && p->y >= 0;
+//@ensures  p->x >= 0 && p->y >= 0;
+{
+    if (p->y + incy >= 0)
+        p->y += incy;
+    if (p->x + incx >= 0)
+        p->x += incx;
+}
+
+// Move `p` up by 1 pixel.
+void up(point p) 
+//@requires p->x >= 0 && p->y >= 0;
+//@ensures  p->x >= 0 && p->y >= 0;
+{
+    move(p, 0, -1);
+}
+
+// Move `p` down by 1 pixel.
+void down(point p)
+//@requires p->x >= 0 && p->y >= 0;
+//@ensures  p->x >= 0 && p->y >= 0;
+{
+    move(p, 0, 1);
+}
+
+// Move `p` left by 1 pixel.
+void left(point p)
+//@requires p->x >= 0 && p->y >= 0;
+//@ensures  p->x >= 0 && p->y >= 0;
+{
+    move(p, -1, 0);
+}
+
+// Move `p` right by 1 pixel.
+void right(point p) 
+//@requires p->x >= 0 && p->y >= 0;
+//@ensures  p->x >= 0 && p->y >= 0;
+{
+    move(p, 1, 0);
+}
+
+/* Get user input and move `a` or `b` accordingly.
+ * Return `true` if input is not ENTER.
+ */
+bool next(point a, point b) 
+//@requires a->x >= 0 && a->y >= 0;
+//@requires b->x >= 0 && b->y >= 0;
+//@ensures  a->x >= 0 && a->y >= 0;
+//@ensures  b->x >= 0 && b->y >= 0;
+{
+    int key = c_getch();
+    /*
+        Somehow the builtins didnt work on my terminal so I instead 
+        check for the ASCII code of the first character.
+    */
+    if (key == 0x41) // A[
+        up(a);
+    if (key == 0x42) // B[
+        down(a);
+    if (key == 0x44) // D[
+        left(a);
+    if (key == 0x43) // C[
+        right(a);
+    if (key == 0x77) // w
+        up(b);
+    if (key == 0x73) // s
+        down(b);
+    if (key == 0x61) // a
+        left(b);
+    if (key == 0x64) // d
+        right(b);
+    return !cc_key_is_enter(key);
+}
+
+// Start the "playground" environment.
+void playground() {
+    window_t w = c_initscr();
+
+    point a = make_point(0,6);
+    point b = make_point(4,0);
+
+    c_noecho();
+    c_curs_set(0);
+
+    draw_line(
+        w,
+        bresenham(a, b)
+    );
+
+    while (next(a, b)) {
+        c_wclear(w);
+        draw_line(
+            w,
+            bresenham(a, b)
+        );
+        c_wrefresh(w);
+    }
+
+    c_curs_set(1);
+    c_endwin();
+}
+
+// Main Function
+int main() {
+    playground();
+    return 0;
+}
+

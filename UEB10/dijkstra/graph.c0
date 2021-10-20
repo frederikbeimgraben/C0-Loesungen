@@ -1,0 +1,70 @@
+/* Weighted directed graph implementation */
+
+/* Graph as adjacency matrix */
+struct graph {
+    int      size;
+    int[][]  edge_weights;
+};
+
+/* Create a new graph of a given size. */
+graph graph_new(int size)
+/*@ensures \result != NULL; @*/
+{
+  graph new = alloc(struct graph);
+  new->size = size;
+  new->edge_weights = alloc_array(int[], size);
+  for (int i = 0; i < size; i++)
+    new->edge_weights[i] = alloc_array(int, size);
+  return new;
+}
+
+int graph_size(graph G)
+{ return G->size; }
+
+/* Simple predicate to validate if a node id
+   could feasably lie in the graph. */
+bool in_graph(graph G, int node)
+{ return 0 <= node && node < G->size; }
+
+/* Add an edge (u,v) to G with a weight w. */
+void add_edge(graph G, int s, int weight, int t)
+/*@requires in_graph(G, s) && in_graph(G, t); @*/
+{ G->edge_weights[s][t] = weight; }
+
+/* Check if an edge (u,v) exists in G. */
+bool has_edge(graph G, int u, int v)
+/*@requires in_graph(G, u) && in_graph(G, v); @*/
+{ return G->edge_weights[u][v] != 0; }
+
+/* Lookup the weight for an exsisting edge (u,v) in G. */
+int weight(graph G, int u, int v)
+/*@requires has_edge(G, u, v); @*/
+{ return G->edge_weights[u][v]; }
+
+/* Recursive walk function for cyclic check. */
+bool _is_cyclic(graph G, int u, bool[] visited, bool[] rec_stack)
+{
+  if (!visited[u]) {
+    visited[u] = true;
+    rec_stack[u] = true;
+    for (int v = 0; v < G->size; v++)
+      if (has_edge(G, u, v) && (
+          !visited[v] && _is_cyclic(G, v, visited, rec_stack) ||
+          rec_stack[v]
+          ))
+        return true;
+  }
+  rec_stack[u] = false;
+  return false;
+}
+
+/* Check if a graph G is acyclic. */
+bool is_acyclic(graph G)
+{
+  bool[] visited = alloc_array(bool, G->size);
+  bool[] rec_stack = alloc_array(bool, G->size);
+  for (int u = 0; u < G->size; u++)
+    if (_is_cyclic(G, u, visited, rec_stack))
+      return false;
+  return true;
+}

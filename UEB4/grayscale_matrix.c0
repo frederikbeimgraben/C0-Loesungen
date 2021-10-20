@@ -1,0 +1,53 @@
+#use <img>
+
+/* Check if a given matrix has height  */
+bool shape(int[][] matrix, int height, int width)
+/*@requires \length(matrix) == height; @*/
+{
+  for (int row = 0; row < height; row++) {
+    /*@assert \length(matrix[row]) == width; @*/
+  }
+  return true;
+}
+
+/* Build grayscale-matrix with height lines and width columns from pixel-array
+   pixels */
+int[][] grayscale_matrix(int[] pixels, int height, int width)
+/*@requires \length(pixels) == width * height; @*/
+/*@ensures shape(\result, height, width); @*/
+{
+  int[][] matrix = alloc_array(int[], height);
+
+  int i = 0;
+  for(int r = 0; r < height; r++) {
+    matrix[r] = alloc_array(int, width);
+    for(int c = 0; c < width; c ++) {
+      /*@assert (pixels[i] >> 16 & 0xFF) == (pixels[i] & 0xFF); @*/
+      /*@assert (pixels[i] >>  8 & 0xFF) == (pixels[i] & 0xFF); @*/
+      matrix[r][c] = pixels[i] & 0xFF;
+      i++;
+    }
+  }
+  return matrix;
+}
+
+/* Build new image from grayscale-matrix with given height and width */
+image_t image_from_grayscale_matrix(int[][] mat, int height, int width)
+/*@requires shape(mat, height, width); @*/
+/*@ensures image_height(\result) == height
+        && image_width(\result)  == width; @*/
+{
+  image_t img = image_create(width, height);
+  int[] pixs = image_data(img);
+
+  int i = 0;
+  for(int r = 0; r < height; r++) {
+    for(int c = 0; c < width; c ++) {
+      /*@assert 0 <= mat[r][c] && mat[r][c] <= 255; @*/
+      pixs[i] = 0xFF000000 | mat[r][c] << 16 | mat[r][c] << 8 | mat[r][c];
+      i++;
+    }
+  }
+
+  return img;
+}

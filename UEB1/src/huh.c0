@@ -1,0 +1,36 @@
+#use <conio>
+#use <string>
+
+int huh(int x) {
+  int c = 0;
+
+  while (x != 0) {
+    c = c + 1;
+    x = x & x - 1;
+  }
+
+  return c;
+}
+
+int main() {
+    printint(huh(0));
+    print("\n");
+    printint(huh(1));
+    print("\n");
+    printint(huh(2));
+    print("\n");
+    printint(huh(3));
+    print("\n");
+    printint(huh(4));
+    print("\n");
+    printint(huh(5));
+    print("\n");
+    printint(huh(6));
+    print("\n");
+    printint(huh(7));
+    print("\n");
+    printint(huh(8));
+    print("\n");
+
+    return 0;
+}

@@ -1,0 +1,22 @@
+#use <conio>
+#use <string>
+
+// Berechnet die Größe des internen `int` Datentyps in Bit.
+int bitwidth() {
+    int x = 1;
+    // i als Zählervariable;
+    int i = 0;
+    // Schiebe x = 1 [0000...0001] genau so oft um einen Bit nach links, bis es am "oberen" ende "herausgeschoben" wird und x = 0 wird.
+    while (x != 0) {
+        x <<= 1;
+        i += 1;
+    }
+    return i;
+}
+
+int main() {
+    print("Bitwidth:\t");
+    printint(bitwidth());
+    println("");
+    return 0;
+}

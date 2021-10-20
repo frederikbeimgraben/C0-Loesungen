@@ -1,0 +1,248 @@
+// Uebungsblatt 09, Aufgabe 2 (interpreter.zip)
+/*
+    Command: `cc0 -L . -w -d -x interpreter.c0`
+*/
+
+#use "hash-int.c0"
+#use <hash>
+#use <queue>
+#use <file>
+#use <conio>
+#use <string>
+#use <parse>
+
+typedef struct instruction* instruction;
+typedef struct program*     program;
+
+// instruction struct
+struct instruction {
+    int op;
+    int arg;
+};
+
+// program struct
+struct program {
+    int instruction_count;
+    instruction[] instructions;
+};
+
+// Create a new instruction
+instruction instruction_new(int op, int arg) {
+    instruction i = alloc(struct instruction);
+    i->op  = op;
+    i->arg = arg;
+    return i;
+}
+
+// Create an empty program with length `len`
+program program_new(int len) {
+    program p = alloc(struct program);
+    p->instruction_count = len;
+    p->instructions = alloc_array(instruction, len);
+    return p;
+}
+
+// My take on splitting tokens.
+// (allows for length check and better exception handling)
+// I had already programmed it for an earlier project.
+// I thought i would give a *nicer* solution for this problem.
+
+// Counts the occurences of *groups* of `c` within `s`
+int occurences(string s, char c) 
+//@ensures \result <= string_length(s);
+{
+    int o = 0;
+    int i = 0;
+    while (i < string_length(s)) {
+        if (string_charat(s, i) == c) {
+            o++;
+            while (i < string_length(s) && string_charat(s, i) == c)
+                i++;
+        }
+        else i++;
+    }
+    return o;
+}
+
+// `split(s, ' ', NULL)` is aequivalent to `parse_tokens(s)`
+
+// Splits `s` around `c` and writes the number of parts to `l`
+string[] split(string s, char c, int* l) 
+//@ensures \length(\result) <= string_length(s) / 2 + 1;
+{
+    if (l == NULL)
+        l = alloc(int);
+    *l = occurences(s, c) + 1;
+    if (string_charat(s, string_length(s) - 1) == c)
+        (*l)--;
+    string[] res = alloc_array(string, *l);
+    int p = 0;
+    for (int i = 0; i < string_length(s) && p < *l; i++) 
+    {
+        if (string_charat(s, i) == c)
+            p++;
+        else
+            res[p] = string_join(
+                res[p],
+                string_fromchar(string_charat(s, i))
+            );
+    }
+    return res;
+}
+
+// Parse a single line to a instruction.
+instruction parse_instruction(string line) 
+//@ensures string_length(line) >= 3;
+//@ensures \result != NULL;
+{
+    int* l = alloc(int); *l = 0;
+    string[] statements = split(line, ' ', l);
+    //@assert (*l) >= 1;
+
+    string op_s  = statements[0];
+    string arg_s = (*l) >= 2 ? statements[1] : "0";
+
+    int* arg_ptr = parse_int(arg_s, 10);
+
+    int op  = -1;
+    int arg = (arg_ptr == NULL ? 0 : *arg_ptr);
+
+    if (string_equal(op_s, "nop"))
+        op = 0;
+    if (string_equal(op_s, "acc"))
+        op = 1;
+    if (string_equal(op_s, "jmp"))
+        op = 2;
+
+    //@assert op >= 0;
+
+    return instruction_new(op, arg);
+}
+
+// Convert a file to a queue of strings representing it´s lines.
+queue load_to_queue(file_t f, int* l) 
+//@requires f != NULL;
+//@requires l != NULL;
+{
+    queue q = queue_new();
+    while (!file_eof(f)) {
+        queue_enq(q, file_readline(f));
+        (*l)++;
+    }
+    return q;
+}
+
+// Load a program file and parse it´s lines to instrcutions.
+program load_program(string input_file) 
+//@requires string_length(input_file) > 0;
+{
+    file_t f = file_read(input_file);
+
+    int* l = alloc(int); *l = 0;
+    queue q = load_to_queue(f, l);
+
+    program p = program_new(*l);
+
+    for (int i = 0; !queue_is_empty(q) && i < *l; i++)
+        p->instructions[i] = parse_instruction(
+            queue_deq(q)
+        );
+    
+    return p;
+}
+
+/* Interpret a program with initial state `0` and return it´s accumulator 
+ * result.
+ */
+int interpret(program p) 
+//@requires p != NULL;
+{
+    int acc = 0;
+    int pp  = 0;
+    int ip  = 0;
+
+    ht visited = ht_new(p->instruction_count);
+
+    while (ip != p->instruction_count) 
+    //@loop_invariant !(ip < 0 || ip > p->instruction_count);
+    //@loop_invariant is_ht(visited);
+    {   
+        if (ht_search(visited, ip) != NULL) {
+            printf("<REPEAT-BREAK ip=Z%d, pp=Z%d> ", ip + 1, pp + 1);
+            return acc;
+        }
+
+        entry e = alloc(key); *e = ip;
+        ht_insert(visited, e);
+
+        // get instruction
+        instruction ci = p->instructions[ip];
+        
+        pp = ip;
+
+        // execute instruction
+        if (ci->op == 0) // NOP
+            ip++;
+        if (ci->op == 1) // ACC
+        {
+            ip++;
+            acc += ci->arg;
+        }
+        if (ci->op == 2) // JMP
+            ip += ci->arg;
+    }
+
+    printf("<PASS ip=Z%d, pp=Z%d> ", ip + 1, pp + 1);
+
+    return acc;
+}
+
+// Test in parse_instruction works for a single line.
+void test_parse_instruction(string s, int w_op, int w_arg) {
+    instruction i = parse_instruction(s);
+    printf(
+        "parse_instruction(\"%s\") -> { op: %d, arg: %d }\n", 
+        s, 
+        i->op, 
+        i->arg
+    );
+    //@assert i->op  == w_op;
+    //@assert i->arg == w_arg;
+}
+
+// Tests (for parse_instruction)
+void tests() {
+    println("Tests:");
+    
+    test_parse_instruction("acc +12", 1,  12);
+    test_parse_instruction("acc -7 ",  1,  -7);
+    test_parse_instruction("nop -42", 0, -42);
+    test_parse_instruction("jmp -3  ",  2,  -3);
+}
+
+// Main
+int main() {
+    tests();
+    print("interpret(load_program(\"puzzle.aoc\")) -> ");
+    printint(
+        interpret(load_program("puzzle.aoc"))
+    );
+    print("\n");
+
+    print("interpret(load_program(\"input\")) -> ");
+    printint(
+        interpret(load_program("input"))
+    );
+    print("\n");
+
+    print("interpret(load_program(\"solution\")) -> ");
+    printint(
+        interpret(load_program("solution"))
+    );
+    print("\n");
+    return 0;
+
+    // Bei mir war das Ergebnis für "puzzle.aoc" `1867`.
+    // Die Änderung in solution ist in Zeile 409:
+    //      `jmp -388` -> `nop -388`
+}

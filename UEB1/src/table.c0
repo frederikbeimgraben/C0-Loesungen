@@ -1,0 +1,47 @@
+#use <conio>
+#use <string>
+
+/* `void draw_table()` Gibt eine Tabelle, die verschiedene mathematische Ausdrücke für alle Kombinationen der Variablen `int a` und `int b` mit `-10 <= a <= 10` und `-5 <= b <= 5`.
+ * 
+ * Diese lauten:
+ * > `a`
+ *
+ * > `b`
+ *
+ * > `a/b`, sofern `b != 0`
+ *
+ * > `a%b`, sofern `b != 0` (Rest von `a/b`)
+ *
+ * > `(a/b)*b+(a%b)`, sofern `b != 0`
+ */
+void draw_table() {
+    int min_a = -10;
+    int max_a =  10;
+    int min_b =  -5;
+    int max_b =   5;
+    print("a\tb\ta/b\ta%b\t(a/b)*b+(a%b)\n");
+    int a = min_a;
+    while (a <= max_a) {
+        int b = min_b;
+        while (b <= max_b) {
+            printint(a);
+            printchar('\t');
+            printint(b);
+            printchar('\t');
+            printint(a/b);
+            printchar('\t');
+            printint(a%b);
+            printchar('\t');
+            printint((a/b)*b+(a%b));
+            printchar('\n');
+            
+            b += 2;
+        }
+        a += 1;
+    }
+}
+
+int main() {
+    draw_table();
+    return 0;
+}

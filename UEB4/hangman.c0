@@ -1,0 +1,324 @@
+#use "hangmanutils.c0"
+#use <string>
+#use <rand>
+#use <util>
+#use <clock>
+#use <file>
+
+/*
+    Warum soll die Länge des dict´s überhaupt übergeben werden, wenn sie 
+    ohnehin fixed ist?
+    Könnte man mit Pointern besser lösen.
+    e.g.:
+    
+    ```c
+    int main() {
+        int* x = alloc(int);
+        
+        string[] dict = build_dictionary(x);
+
+        //@assert *x == 10;
+        return 0;
+    }
+
+
+    string[]  build_dictionary(int* n) 
+    { 
+        int l = 10;
+        ... 
+        *n = l;
+        ...
+    }
+    ```
+
+    Aber die dürfen wir ja leider noch nicht benutzen...
+    Ich habe mich dabei also lieber an das Beispiel gehalten allerdings ein 
+    `requires` eingefügt, um unkontrollierte Exceptions zu verhindern.
+*/
+
+string[] stringarray_append(string[] strs, int l, string str)
+{
+    string[] res = alloc_array(string, l + 1);
+    for (int i = 0; i < l; i++) {
+        res[i] = strs[i];
+    }
+    res[l] = str;
+    return res;
+}
+
+string[] parse_file(string file_name, int* len) {
+    file_t file = file_read(file_name);
+    string[] out = alloc_array(string, 0);
+    int l = 0;
+    while (!file_eof(file)) {
+        out = stringarray_append(out, l, file_readline(file));
+        l++;
+    }
+    *len = l;
+    return out;
+}
+
+/*  Build  dictionary  of n words. */
+string[]  build_dictionary(int n)
+/*@ requires n == 10; @*/
+/*@ ensures \length (\result) == n; @*/
+{
+    string[] dict = alloc_array(string, n);
+    dict[0] = "Funktional";
+    dict[1] = "Objektorientiert"; 
+    dict[2] = "Praedikativ";
+    dict[3] = "Pragmatisch";
+    dict[4] = "SegmentationFault";
+    dict[5] = "SyntaxError";
+    dict[6] = "Donaudampfschifffahrtskapitaenskajuete";
+    dict[7] = "foobar";
+    dict[8] = "string";
+    dict[9] = "char";
+    return dict;
+}
+
+/* Generate a random number higher than `l` (*lower*) 
+ * and lower than `u` (*upper*) 
+ */
+int rand_within(rand_t gen, int l, int u) 
+/*@requires l < u; @*/
+/*@ensures \result >= l && \result <= u; @*/
+{
+    int rnd  = abs(rand(gen));
+    int range = abs(u - l);
+    rnd = rnd % (range + 1) + l;
+    return rnd >= l && rnd <= u ? rnd : l;
+}
+
+/* Checks if the given array `char[] chrs` of length `l` contains `char chr`.
+ * `true` if contained otherwise `false`
+ */
+bool chararray_contains(char[] chrs, int l, char chr) 
+/*@requires \length(chrs) >= l; @*/
+{
+    for (int i = 0; i < l; i++) {
+        if (chrs[i] == chr)
+            return true;
+    }
+    return false;
+}
+
+/* Checks if the given `string str` contains `char chr`. 
+ * `true` if contained otherwise `false`
+ */
+bool string_contains(string str, char chr) 
+/* `chr` can be any `char` and `str` can be any `string`
+ * thus `requires` is not needed here.*/
+{
+    string strlo = string_tolower(str);
+    for (int i = 0; i < string_length(strlo); i++) {
+        if (string_charat(strlo, i) == chr)
+            return true;
+    }
+    return false;
+}
+
+/* Generates a `char`-array of length `l + 1` where `l` is the length of 
+ * the input-array.
+ * The first `l` elements of the returned array are assigned as the
+ * corresponding elements of the input-array while the last element is
+ * assigned as the given char `chr`.
+ */
+char[] chararray_append(char[] chrs, int l, char chr) 
+/*@requires \length(chrs)    == l; @*/
+/*@ensures  \length(\result) == l+1; @*/
+/*@ensures  chararray_contains(\result, l+1, chr); @*/
+{
+    char[] res = alloc_array(char, l + 1);
+    for (int i = 0; i < l; i++) {
+        res[i] = chrs[i];
+    }
+    res[l] = chr;
+    return res;
+}
+
+/* Checks if the character `chr` is a lower case standard ASCII
+ * character (a-z)
+ */
+bool is_allowed(char chr) 
+// `chr` can be any `char` thus `requires` is not needed here.
+{
+    string allowed = "abcdefghijklmnopqrstuvwxyz";
+    return chararray_contains(
+        string_to_chararray(allowed),
+        string_length(allowed),
+        chr
+    );
+}
+
+/* Prints all characters within the array `chrs` of length `l` to
+ * the console.
+ */
+void draw_guessed(char[] chrs, int l) 
+/*@requires \length(chrs) == l; @*/
+{
+    print("Already guessed characters: ");
+    for (int i = 0; i < l; i++) {
+        printchar(chrs[i]);
+        if (i + 1 != l)
+            print(", ");
+    }
+    printchar('\n');
+}
+
+/* Prints the string `str` to the console.
+ * 
+ * If `vis == false` all characters within `str` that are not in
+ * the char-array `chrs` of length `l` are replaced by `'_'`
+ * 
+ * If `vis == true` the string is printed unmasked.
+ */
+void draw_word(string str, char[] chrs, int l, bool vis) 
+/*@requires \length(chrs)      == l; @*/
+/*@requires string_length(str) != 0; @*/
+{
+    print(vis ? "The word was: " : "Word to guess: ");
+    string strlo = string_tolower(str);
+    for (int i = 0; i < string_length(str); i++) {
+        if (chararray_contains(chrs, l, string_charat(strlo, i)) || vis)
+            printchar(string_charat(str, i));
+        else
+            printchar('_');
+        printchar(' ');
+    }
+    printchar('\n');
+}
+
+/* Requests user input and will repeat to ask until a single
+ * character (a-z) that is not within `chrs` (array of len `l`) 
+ * (followed by enter) has been entered or `CTRL+C` is pressed.
+ */
+char get_input(char[] chrs, int l) 
+/*@requires \length(chrs)      == l; @*/
+/*@ensures !chararray_contains(chrs, l, \result); @*/
+{
+    print("Guess the next character: ");
+    while (true) {
+        string res = string_tolower(readline());
+        if (
+            string_length(res) != 1 ||
+            !is_allowed(string_charat(res, 0))
+        ) {
+            print("\a[Invalid Input]\nGuess the next character: ");
+        } else if (
+            !chararray_contains(
+                chrs,
+                l,
+                string_charat(res, 0)
+            )
+        ) {
+            return string_charat(res, 0);
+        } else {
+            print("\a[Already Guessed]\nGuess the next character: ");
+        }
+    }
+    return '_';
+}
+
+/* Counts how many characters within `str` are not within the 
+ * char-array `chrs` of length `l` and therefore yet have to be
+ * guessed.
+ */
+int remaining(string str, char[] chrs, int l) 
+/*@requires \length(chrs) == l; @*/
+/*@ensures  \result <= string_length(str); @*/
+/*@ensures  \result >= 0; @*/
+{
+    int res = 0;
+    string strlo = string_tolower(str);
+    for (int i = 0; i < string_length(strlo); i++) {
+        if (
+            !chararray_contains(chrs, l, string_charat(strlo, i))
+        ) {
+            res++;
+        }
+    }
+    return res;
+}
+
+/* Launches a new game of hangman with `str` as the word to guess
+ */
+bool play_hangman(string str) 
+/*@requires string_length(str) != 0; @*/
+{
+    int l = 0;
+    int f = 0;
+    string[][] hangman = build_hangman();
+    char[] chrs = alloc_array(char, l);
+    while (remaining(str, chrs, l) > 0 && f < 6) {
+        draw_hangman(hangman[f]);
+        printchar('\n');
+
+        draw_word(str, chrs, l, false);
+
+        char guess = get_input(chrs, l);
+
+        /*@assert is_allowed(guess); @*/
+
+        chrs = chararray_append(chrs, l, guess);
+
+        l++;
+
+        draw_guessed(chrs, l);
+
+        if (!string_contains(str, guess))
+            f++;
+    }
+    draw_hangman(hangman[f]);
+    draw_word(str, chrs, l, true);
+    return f < 6;
+}
+
+int[] intarray_append(int[] xs, int l, int x)
+{
+    int[] res = alloc_array(int, l + 1);
+    for (int i = 0; i < l; i++) {
+        res[i] = xs[i];
+    }
+    res[l] = x;
+    return res;
+}
+
+bool intarray_contains(int[] xs, int l, int x) 
+{
+    for (int i = 0; i < l; i++)
+        if (xs[i] == x)
+            return true;
+    return false;
+}
+
+/* Main Function
+ * Chains games and selects the random words.
+ */
+int main() {
+    rand_t gen = init_rand(now());
+    int* len = alloc(int);
+    *len = 0;
+    int[] agen = alloc_array(int, 0);
+    int lagen  = 0;
+    string[] dict = parse_file("words.txt", len);
+    while (true) {
+        println("Starting new game!");
+
+        int rnd = 0;
+
+        while (intarray_contains(agen, lagen, rnd)) {
+            rnd = rand_within(gen, 0, *len-1);
+            agen = intarray_append(agen, lagen, rnd);
+        }
+
+        string res = dict[rnd];
+        print(res);
+        printchar('\n');
+        if (play_hangman(res))
+            println("You win!  :-)\n");
+        else
+            println("You lose! :-(\n");
+    }
+    return 0;
+}

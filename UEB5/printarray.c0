@@ -1,0 +1,17 @@
+#use <conio>
+
+/* Print comma-separated list of the first n elements of array xs */
+void printintarray(int[] xs, int n)
+/*@ requires n <= \length(xs); @*/
+{
+  printchar('[');
+
+  if (n > 0)
+    printint(xs[0]);
+  for (int i = 1; i < n; i = i + 1) {
+    print(",");
+    printint(xs[i]);
+  }
+
+  printchar(']');
+}

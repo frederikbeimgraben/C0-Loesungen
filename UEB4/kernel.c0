@@ -1,0 +1,158 @@
+#use "grayscale_matrix.c0"
+#use <img>
+#use <conio>
+
+/* Checks if `x` is within range `[lo, hi)`
+ * (`lo ≤ x < hi`)
+ */
+bool within(int x, int lo, int hi) 
+/*@requires hi > lo; @*/
+{
+    return lo <= x && x < hi;
+}
+
+/* Maps `x` to the range `[lo, hi]`.
+ * ```
+ * (x < lo) -> lo
+ * (hi < x) -> hi
+ * ( else ) -> x
+ * ```
+ */
+int clamp(int x, int lo, int hi) 
+/*@requires hi > lo; @*/
+{
+    return x > hi ? hi : (x < lo ? lo : x);
+}
+
+/* Applies a `kernel` (`int[][]`) to a single pixel (`x`, `y`) of the 
+ * grayscale-matrix `mat` (`int[][]`) with `shape(mat, h, w)`.
+ */
+int pixel_val(int y, int x, int[][] mat, int h, int w, int[][] kernel) 
+/*@requires shape(mat, h, w); @*/
+/*@requires shape(kernel, 3, 3); @*/
+/*@requires within(x, 0, w) && 
+            within(y, 0, h); @*/
+/*@ensures within(\result, 0, 256); @*/
+{
+    int res = 0;
+    for (int yi = -1; yi <= 1; yi++) {
+        for (int xi = -1; xi <= 1; xi++) {
+            if (within(y+yi, 0, h) && within(x+xi, 0, w)) {
+                res += mat[y+yi][x+xi] * kernel[yi+1][xi+1];
+            }
+        }
+    }
+    return clamp(res, 0, 255);
+}
+
+/* Applies a `kernel` (`int[][]`) to a grayscale-image `img` (`int[][]`).
+ */
+image_t apply_kernel(image_t img, int[][] kernel) 
+/*@requires shape(kernel, 3, 3); @*/
+/*@ensures image_width(img) == image_width(\result) &&
+           image_height(img) == image_height(\result); @*/
+{
+    int h = image_height(img);
+    int w = image_width(img);
+    int[][] mat = grayscale_matrix(
+        image_data(img),
+        h,
+        w
+    );
+
+    int[][] mat_out = alloc_array(int[], h);
+
+    for (int y = 0; y < h; y++) {
+        mat_out[y] = alloc_array(int, w);
+        for (int x = 0; x < h; x++)
+            mat_out[y][x] = pixel_val(y, x, mat, h, w, kernel);
+    }
+    return image_from_grayscale_matrix(mat_out, h, w);
+}
+
+// EMBOSS kernel
+int[][] emboss() 
+/*@ensures shape(\result, 3, 3); @*/
+{
+    int[][] krn = alloc_array(int[], 3);
+    krn[0] = alloc_array(int, 3);
+    krn[0][0] = -2; krn[0][1] = -1; krn[0][2] = 0; 
+
+    krn[1] = alloc_array(int, 3);
+    krn[1][0] = -1; krn[1][1] = 1; krn[1][2] = 1; 
+
+    krn[2] = alloc_array(int, 3);
+    krn[2][0] = 0; krn[2][1] = 1; krn[2][2] = 2; 
+    return krn;
+}
+
+// EMBED kernel
+int[][] embed() 
+/*@ensures shape(\result, 3, 3); @*/
+{
+    int[][] krn = alloc_array(int[], 3);
+    krn[2] = alloc_array(int, 3);
+    krn[2][2] = -2; krn[2][1] = -1; krn[2][0] = 0; 
+
+    krn[1] = alloc_array(int, 3);
+    krn[1][2] = -1; krn[1][1] = 1; krn[1][0] = 1; 
+
+    krn[0] = alloc_array(int, 3);
+    krn[0][2] = 0; krn[0][1] = 1; krn[0][0] = 2; 
+    return krn;
+}
+
+// OUTLINE kernel
+int[][] outline() 
+/*@ensures shape(\result, 3, 3); @*/
+{
+    int[][] krn = alloc_array(int[], 3);
+    krn[0] = alloc_array(int, 3);
+    krn[0][0] = -1; krn[0][1] = -1; krn[0][2] = -1; 
+
+    krn[1] = alloc_array(int, 3);
+    krn[1][0] = -1; krn[1][1] = 8; krn[1][2] = -1; 
+
+    krn[2] = alloc_array(int, 3);
+    krn[2][0] = -1; krn[2][1] = -1; krn[2][2] = -1; 
+    return krn;
+}
+
+// SHARPEN kernel
+int[][] sharpen() 
+/*@ensures shape(\result, 3, 3); @*/
+{
+    int[][] krn = alloc_array(int[], 3);
+    krn[0] = alloc_array(int, 3);
+    krn[0][0] = 0; krn[0][1] = -1; krn[0][2] = 0; 
+
+    krn[1] = alloc_array(int, 3);
+    krn[1][0] = -1; krn[1][1] = 5; krn[1][2] = -1; 
+
+    krn[2] = alloc_array(int, 3);
+    krn[2][0] = 0; krn[2][1] = -1; krn[2][2] = 0; 
+    return krn;
+}
+
+// main function with a few tests. change file names before executing.
+int main() {
+    println("`main()` is commented out. Change file names first!");
+    // Check test functions:
+    /*@assert clamp(-2, 0, 255)  == 0;   @*/
+    /*@assert clamp(257, 0, 255) == 255; @*/
+    /*@assert clamp(128, 0, 255) == 128; @*/
+
+    /*@assert !within( -2, 0, 255); @*/
+    /*@assert !within(257, 0, 255); @*/
+    /*@assert  within(128, 0, 255); @*/
+
+    // Actual program - readd after changing input file-name.
+    /*
+    image_t img = image_load("monalisa.png");
+    image_save(apply_kernel(img, emboss()),  "emboss.png");
+    image_save(apply_kernel(img, embed()),   "embed.png");
+    image_save(apply_kernel(img, outline()), "outline.png");
+    image_save(apply_kernel(img, sharpen()), "sharpen.png");
+    */
+    return 0;
+}

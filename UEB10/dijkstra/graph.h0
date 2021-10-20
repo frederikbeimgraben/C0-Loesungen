@@ -1,0 +1,32 @@
+/* Weighted directed graph interface */
+
+#use <string>
+
+struct graph;
+typedef struct graph* graph;
+
+/* Create a new graph of a given size. */
+graph graph_new(int size)
+/*@ensures \result != NULL; @*/;
+
+/* Returns the size of graph G */
+int graph_size(graph G);
+
+/* Simple predicate to validate if a node id
+   could feasably lie in the graph. */
+bool in_graph(graph G, int node);
+
+/* Check if a graph G is acyclic. */
+bool is_acyclic(graph G);
+
+/* Add an edge (u,v) to G with a weight w. */
+void add_edge(graph G, int s, int weight, int t)
+/*@requires in_graph(G, s) && in_graph(G, t); @*/;
+
+/* Check if an edge (u,v) exists in G. */
+bool has_edge(graph G, int u, int v)
+/*@requires in_graph(G, u) && in_graph(G, v); @*/;
+
+/* Lookup the weight for an exsisting edge (u,v) in G. */
+int weight(graph G, int u, int v)
+/*@requires has_edge(G, u, v); @*/;

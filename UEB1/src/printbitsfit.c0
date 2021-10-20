@@ -1,0 +1,87 @@
+#use <conio>
+#use <string>
+
+// Featuring `bitwidth`! Auch zu sehen in Aufgabe 3!
+// Berechnet die Größe des internen `int` Datentyps in Bit.
+int bitwidth() {
+    int x = 1;
+    // i als Zählervariable;
+    int i = 0;
+    // Schiebe x = 1 [0000...0001] genau so oft um einen Bit nach links, bis es am "oberen" ende "herausgeschoben" wird und x = 0 wird.
+    while (x != 0) {
+        x <<= 1;
+        i += 1;
+    }
+    return i;
+}
+
+// Testet, ob ein bestimmter Bit gesetzt ist (mittels bitwise and).
+bool is_bit_set(int x, int n) 
+/*@requires 31 >= n && n >= 0; @*/
+{
+    return (x & (1 << n)) != 0;
+}
+
+// Formatted in MD, applies to VSCode´s hover over function.
+/* Gibt die Bits eines Integers in absteigender Reihenfolge (obere Nullen abgeschnitten) in die Konsole aus und gibt als Rückgabewert die Anzahl der ausgegebenen Zeichen zurück.  
+ * > **Returns:** `int n`, number of chars printed
+ *
+ * > **Args:** `(int x)`
+ * >> **x**: number to print in bits
+ */
+int printbitsfit(int x) 
+/*@ensures bitwidth() >= \result && \result > 0; @*/
+{
+    if (x == 0) {
+        printchar('0');
+        return 1;
+    }
+    
+    // Aktuell geprüfter Bit
+    int n = bitwidth() - 1;
+
+    // finde ersten mit `int 1` gesetzten Bit von links/oben ausgehend.
+    while (!is_bit_set(x,n)) {
+        n--;
+    }
+    
+    int i = n;
+
+    // Gebe Bits in die Konsole aus.
+    while (n >= 0) {
+        if (is_bit_set(x, n)) {
+            printchar('1');
+        } else {
+            printchar('0');
+        }
+        n--;
+    }
+
+    return i+1;
+}
+
+int main() {
+    int d = 0;
+    print("Bits:\t");
+    d = printbitsfit(32);
+    print("\nDigits:\t");
+    printint(d);
+    
+    print("\n\nBits:\t");
+    d = printbitsfit(15);
+    print("\nDigits:\t");
+    printint(d);
+
+    print("\n\nBits:\t");
+    d = printbitsfit(2);
+    print("\nDigits:\t");
+    printint(d);
+
+    print("\n\nBits:\t");
+    d = printbitsfit(0);
+    print("\nDigits:\t");
+    printint(d);
+    printchar('\n');
+
+    return 0;
+}

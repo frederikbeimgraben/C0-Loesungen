@@ -1,0 +1,121 @@
+#use <conio>
+#use <rand>
+//#use <clock>
+#use <string>
+#use <util>
+// #use "matrix.c0"
+
+int occurences(string s, char c) {
+    int o = 0;
+    for (int i = 0; i < string_length(s); i++) {
+        o += string_charat(s, i) == c ? 1 : 0;
+    }
+    return o;
+}
+
+string[] split(string s, char c, int* l) {
+    string buffer = "";
+    string[] res = alloc_array(string, occurences(s, c) + 1);
+    *l = occurences(s, c) + 1;
+    int rp = 0;
+    int sl = string_length(s);
+    for (int i = 0; i < sl; i++) {
+        if (string_charat(s, i) == c) {
+            res[rp] = buffer;
+            buffer  = "";
+            rp++;
+        } else {
+            string current = string_fromchar(string_charat(s, i));
+            buffer = string_join(buffer, current);
+            if (i == sl - 1) {
+                res[rp] = buffer;
+                buffer  = "";
+            }
+        }
+    }
+    return res;
+}
+
+int pow_n(int x, int n) {
+    int r = 1;
+    for (int i = 0; i < n; i++) {
+        r *= x;
+    }
+    return r;
+}
+
+char[] nums() {
+    char[] r = alloc_array(char, 10);
+    r[0] = '0';
+    r[1] = '1';
+    r[2] = '2';
+    r[3] = '3';
+    r[4] = '4';
+    r[5] = '5';
+    r[6] = '6';
+    r[7] = '7';
+    r[8] = '8';
+    r[9] = '9';
+    return r;
+}
+
+bool contains(char[] cs, int l, char c) {
+    bool res = false;
+    for (int i = 0; i < l; i++) {
+        res = res || c == cs[i];
+    }
+    return res;
+}
+
+int int_fromchar(char c) {
+    char[] n = nums();
+    if (!contains(n, 10, c)) {
+        return c == '-' ? -1 : 0;
+    }
+    for (int i = 0; i < 10; i++) {
+        if (c == n[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int int_fromstring(string s) {
+    int res = 0;
+    int l = string_length(s);
+    int p = 0;
+    for (int i = 1; i <= l; i++) {
+        res += int_fromchar(string_charat(s, l - i)) * pow_n(10, p);
+        p += contains(nums(), 10, string_charat(s, l - i)) ? 1 : 0;
+    }
+    return res;
+}
+
+int[] intarray_fromstringarray(string[] s, int l) {
+    int[] res = alloc_array(int, l);
+    for (int i = 0; i < l; i++) {
+        res[i] = int_fromstring(s[i]);
+    }
+    return res;
+}
+
+int[][] intmatrix_fromstring(string s, int* n, int* m) {
+    string[] rows = split(s, '|', n);
+    int[][] res = alloc_array(int[], *n);
+    for (int l = 0; l < *n; l++) {
+        string[] columns = split(rows[l], ',', m);
+        res[l] = alloc_array(int, *m);
+        for (int r = 0; r < *m; r++) {
+            res[l][r] = int_fromstring(columns[r]);
+        }
+    }
+    return res;
+}
+
+// int main() {
+//     int* n = alloc(int);
+//     int* m = alloc(int);
+//     int[][] mtrx = intmatrix("12, 13, 14 | 2, 3, 4", n, m);
+//     printmatrixfancy(mtrx, *n, *m);
+//     return 0;
+// }

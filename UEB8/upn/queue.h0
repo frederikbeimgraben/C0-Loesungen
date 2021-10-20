@@ -1,0 +1,29 @@
+/* List interface */
+
+struct qlist;
+typedef struct qlist* qlist;
+
+/* can we reach `to' if we start traversing from `from'? */
+/* NB: endless iteration in presence of cycles! */
+bool qreachable(qlist from, qlist to);
+
+
+/* Queues (FIFO) interface */
+
+/* the abstract queue type */
+struct queue;
+typedef struct queue* queue;
+
+/* operations */
+bool queue_is_empty(queue q)        /* does q contain elements? */
+/*@requires q != NULL; @*/;
+
+queue queue_new()                   /* create new empty queue */
+/*@ensures \result != NULL && queue_is_empty(\result); @*/;
+
+void queue_enq(queue q, elem e)     /* place element e at back of q */
+/*@requires q != NULL;          @*/
+/*@ensures  !queue_is_empty(q); @*/;
+
+elem queue_deq(queue q)             /* remove element at head of q */
+/*@requires q != NULL && !queue_is_empty(q); @*/;

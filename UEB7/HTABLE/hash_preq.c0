@@ -1,0 +1,36 @@
+#use <string>
+
+typedef string entry;
+typedef string key;
+
+// struct entry {
+//     string name;
+// };
+
+// struct key {
+//     string k;
+// };
+
+bool keys_equal(key k1, key k2) {
+    return string_equal(k2, k1);
+}
+
+int key_hash(key str) {
+    // P and M
+    int p = 31;
+    int m = 1000000000 + 9;
+    int power_of_p = 1;
+    int hash_val = 0;
+ 
+    // Loop to calculate the hash value
+    // by iterating over the elements of string
+    for (int i = 0; i < string_length(str); i++) {
+        hash_val
+            = (hash_val
+               + (char_ord(string_charat(str, i)) - 65 + 1) * power_of_p)
+              % m;
+        power_of_p
+            = (power_of_p * p) % m;
+    }
+    return hash_val;
+}

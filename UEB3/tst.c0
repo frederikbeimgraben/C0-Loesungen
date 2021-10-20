@@ -1,0 +1,50 @@
+#use <conio>
+
+bool shape(int[][] matrix, int n, int m) {
+    /*@assert \length(matrix) == n; @*/
+    for (int i = 0; i < n; i++) {
+        /*@assert \length(matrix[i]) == m; @*/
+    }
+    return true;
+}
+
+int[][] transpose(int[][] matrix, int n, int m) {
+    int[][] matrixT = alloc_array(int[], m);
+
+    for (int i = 0; i < m; i++) {
+        matrixT[i] = alloc_array(int, n);
+        for (int j = 0; j < n; j++) {
+            matrixT[i][j] = matrix[j][i];
+        }
+    }
+    return matrixT;
+}
+
+void printmatrix(int[][] matrix, int n, int m) 
+/*@requires shape(matrix, n, m); @*/
+{
+    for (int l = 0; l < n; l++) {
+        for (int r = 0; r < m; r++) {
+            printint(matrix[l][r]);
+            printchar('\t');
+        }
+        printchar('\n');
+    }
+}
+
+int main() {
+    int[][] mat = alloc_array(int[], 2);
+
+    mat[0] = alloc_array(int, 3);
+    mat[1] = alloc_array(int, 3);
+
+    mat[0][0] = 1; mat[0][1] = 2; mat[0][2] = 0;
+    mat[1][0] = 1; mat[1][1] = 1; mat[1][2] = 1;
+
+    printmatrix(mat, 2, 3);
+    println("");
+    printmatrix(transpose(mat, 2, 3), 3, 2);
+    println("");
+
+    return 0;
+}

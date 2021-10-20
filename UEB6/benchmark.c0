@@ -1,0 +1,85 @@
+#use "sparseset.c0"
+#use "bitset.c0"
+#use <clock>
+
+/* Displays the needed time of the two types of sets for 
+ * the given parameters 
+ */
+void benchmark(int size, int fill, int iterations) 
+//@requires fill <= size;
+{
+    int last = millisecs();
+    int d = 0;
+
+    // bit_set
+    for (int i = 0; i < iterations; i++) {
+        bit_set s = bit_new(size);
+        for (int p = 0; p < fill; p++)
+            bit_add(s, p);
+        for (int p = 0; p < size; p++)
+            bit_mem(s, p);
+        bit_empty(s);
+    }
+    
+    d = millisecs() - last; 
+    print("> Time for `bit_set`: ");
+    printint(d);
+    print("ms\n");
+
+    last = millisecs();
+
+    // sparse_set
+    for (int i = 0; i < iterations; i++) {
+        sparse_set s = sparse_new(size);
+        for (int p = 0; p < fill; p++)
+            sparse_add(s, p);
+        for (int p = 0; p < size; p++)
+            sparse_mem(s, p);
+        sparse_empty(s);
+    }
+
+    d = millisecs() - last;
+    print("> Time for `sparse_set`: ");
+    printint(d);
+    print("ms\n");
+}
+
+// Print demo and start benchmark
+int main() {
+    /*
+        Da in `sparse_add` mehrere Aufrufe (auf verschiedene Arrays) 
+        stattfinden, in `bit_add` jedoch nur ein Arrayelement gesetzt 
+        wird, ist erstere Funktion langsamer. Das selbe gilt auch für
+        `sparse_mem` und `bit_mem`.
+        In Folge ist der benchmark für `bit_set` schneller. Der Unter-
+        schied vergrößert sich hierbei (am stärksten) mit der Erhöhung
+        der Anzahl der Iterationen für `*_add`. (nahezu linear)
+
+        (without dynamic checks)
+
+        benchmark(10000, 1000, 1000)
+            bit_set:    185ms
+            sparse_set: 210ms
+
+        benchmark(10000, 5000, 1000) 
+            bit_set:    235ms (+27%)
+            sparse_set: 350ms (+67%)
+
+        benchmark(10000, 10000, 1000) 
+            bit_set:    293ms (+58%)
+            sparse_set: 510ms (+143%)
+    */
+    println("BIT SET:");
+    test_bit_set();
+
+    println("\n\nSPARSE SET:");
+    test_sparse_set();
+
+    println("\n\nbenchmark(10000, 1000, 1000): ");
+    benchmark(10000, 1000, 1000);
+    println("\nbenchmark(10000, 5000, 1000): ");
+    benchmark(10000, 5000, 1000);
+    println("\nbenchmark(10000, 10000, 1000): ");
+    benchmark(10000, 10000, 1000);
+    return 0;
+}

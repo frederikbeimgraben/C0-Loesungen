@@ -1,0 +1,91 @@
+#use <conio>
+#use <util>
+
+/* Ich bin mal so frei und füge (obwohl das nicht gefordert ist) 
+ * überall Pre-/Postconditions hinzu 
+ */
+
+/* Kehrt das eingegebene `int`-Array `xs` mit der Länge `len` um 
+ * und gibt es als `int`-array gleicher Länge wieder aus.
+ * > bspw: `reverse([0,1,2,3], 4) -> [3,2,1,0] (int[])`
+ */
+int[] reverse(int[] xs, int len) 
+/*@ensures \length(\result) == len; @*/
+/*@requires \length(xs) >= len; @*/
+{
+    int[] res = alloc_array(int, len);
+
+    for (int i = 1; i <= len; i++) {
+        res[i-1] = xs[len-i];
+    }
+
+    return res;
+}
+
+/* Gibt das größte Element des eingegebenen `int`-Arrays `xs` mit
+ * der Länge `len` als `int` zurück.
+ * > bspw: `maximum([2, 9, 1, 2], 4) -> 9 (int)`
+ */
+int maximum(int[] xs, int len)
+/*@requires \length(xs) >= len; @*/
+{
+    int max = int_min();
+    for (int i = 0; i < len; i++) {
+        max = xs[i] > max ? xs[i] : max;
+    }
+    return max;
+}
+
+/* Gibt das kleinste Element des eingegebenen `int`-Arrays `xs` mit
+ * der Länge `len` als `int` zurück.
+ * > bspw: `minimum([2, 9, 1, 2], 4) -> 1 (int)`
+ */
+int minimum(int[] xs, int len)
+/*@requires \length(xs) >= len; @*/
+{
+    int min = int_max();
+    for (int i = 0; i < len; i++) {
+        min = xs[i] < min ? xs[i] : min;
+    }
+    return min;
+}
+
+/* Gibt ein Histogramm für die Verteilung der `int`s im eingegebenen 
+ * `int`-Array `xs` (mit der Länge `len`) zurück.
+ * Die Länge des ausgegebenen Arrays entspricht dabei:
+ * > `maximum(xs, len) - minimum(xs, len) + 1`
+ *
+ * > bspw: `histogram([-2, 2, 2, 4, 5], 5) -> [1, 0, 0, 0, 2, 0, 1, 1] (int[])`
+ */
+int[] histogram(int[] xs, int len) 
+/*@ensures \length(\result) == maximum(xs, len) - minimum(xs, len) + 1; @*/
+/*@requires \length(xs) >= len; @*/
+{
+    if (len == 0)
+        return alloc_array(int, 0);
+    int min = minimum(xs, len); // Damit es nicht mit jeder Iteration neu berechnet werden muss
+    int[] hist = alloc_array(int, maximum(xs, len) - min + 1);
+    for (int i = 0; i < len; i++) {
+        hist[xs[i]-min]++;  
+    }
+    return hist;
+}
+
+/* Gibt den Inhalt des `int`-Arrays `arr` mit der Länge `len` 
+ * in die Konsole aus. Die Formatierung erfolgt dabei folgendermaßen:
+ * > `[arr[0], ..., arr[len-1]]`
+ */
+void printintarr(int[] arr, int len) {
+    printchar('[');
+    for (int i = 0; i < len; i++) {
+        printint(arr[i]);
+        if (len - i != 1)
+            print(", ");
+    }
+    printchar(']');
+}
+
+
+int main() {
+    return 0;
+}

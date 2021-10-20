@@ -1,0 +1,28 @@
+struct helem {
+  int  node;
+  int  dist;
+};
+typedef struct helem* helem;
+
+
+/* compare elements e1, e2:
+   e1 < e2: < 0, e1 == e2: 0, e1 > e2: > 0
+*/
+int compare(helem e1, helem e2)
+/*@requires e1 != NULL && e2 != NULL; @*/
+{
+  return e1->dist < e2->dist ? -1 :
+         e1->dist > e2->dist ?  1 :
+                                0;
+}
+
+helem helem_new(int node, int dist)
+/*@ensures \result != NULL; @*/
+{
+  helem new = alloc(struct helem);
+  new->node = node;
+  new->dist = dist;
+  return new;
+}
+
+typedef int lelem;

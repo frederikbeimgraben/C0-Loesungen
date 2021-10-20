@@ -1,0 +1,83 @@
+/* List implementation */
+struct qlist {
+  elem          elem;
+  struct qlist* next;
+};
+
+/* can we reach `to' if we start traversing from `from'? */
+/* NB: endless iteration in presence of cycles! */
+bool qreachable(qlist from, qlist to) {
+  for (qlist walk = from; walk != to; walk = walk->next)
+    if (walk == NULL)
+      return false;
+  return true;
+}
+
+/* Queues (FIFO) */
+
+/* queue implementation (head/back pointers) */
+struct queue {
+  qlist head;
+  qlist back;
+};
+
+/* check the data structure invariant for queue q:
+   back is qreachable from head
+*/
+bool is_queue(queue q)
+/*@requires q != NULL; @*/
+{
+  return q->head != NULL &&
+         q->back != NULL &&
+         qreachable(q->head, q->back);
+}
+
+
+/* create a new empty queue */
+queue queue_new()
+/*@ensures is_queue(\result); @*/
+/*@ensures queue_is_empty(\result); @*/
+{
+  qlist end = alloc(struct qlist); /* fields remain at default/NULL */
+  queue q  = alloc(struct queue);
+
+  q->head = end;
+  q->back = end;
+
+  return q;
+}
+
+/* does q contain elements? */
+bool queue_is_empty(queue q)
+/*@requires is_queue(q); @*/
+{
+  return q->head == q->back;
+}
+
+/* place element e at the back of q */
+void queue_enq(queue q, elem e)
+/*@requires is_queue(q);       @*/
+/*@ensures is_queue(q);        @*/
+/*@ensures !queue_is_empty(q); @*/
+{
+  qlist end = alloc(struct qlist);
+
+  q->back->elem = e;
+  q->back->next = end;
+
+  q->back = end;
+}
+
+/* remove and return element at head of q */
+elem queue_deq(queue q)
+/*@requires is_queue(q); @*/
+/*@requires !queue_is_empty(q); @*/
+/*@ensures  is_queue(q); @*/
+{
+  elem e = q->head->elem;
+
+  q->head = q->head->next;
+
+  return e;
+}
+

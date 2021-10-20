@@ -1,0 +1,147 @@
+/* Hash table implementation (cuckoo hashing) */
+
+#use <conio>
+
+/* cuckoo hashing requires a pair of bucket arrays */
+struct ht {
+    int       capacity;    /* hash table capacity */
+    entry[][] buckets;    /* a pair of ...       */
+    int       layers;
+};
+
+/* check whether ht is a valid cuckoo hash table
+   (all non-NULL entries in buckets‹i› have been placed
+    according to function hash‹i›)
+*/
+bool is_ht(ht h)
+//@requires h != NULL;
+//@requires h->layers > 0;
+//@requires h->capacity > 0;
+//@requires \length(h->buckets)    == h->layers;
+//@requires \length(h->buckets[0]) == h->capacity;
+{
+    for (int l = 0; l < h->layers; l++) {
+        for (int i = 0; i < h->capacity; i++) {
+            if (h->buckets[l][i] != NULL &&
+                abs(hash(1, entry_key(h->buckets[l][i]))) % h->capacity != i)
+                return false;
+        }
+    }
+    return true;
+}
+
+// Check if each layer of the (2d-) array `buckets` has length `capacity`
+bool shape(entry[][] buckets, int layers, int capacity) {
+    //@assert \length(buckets) == layers;
+    for (int i = 0; i < layers; i++) {
+        //@assert \length(buckets[i]) == capacity;
+    }
+    return true;
+}
+
+/* create a new cuckoo hash table with capacity c */
+ht ht_new(int c, int d)
+/*@ requires c > 0; @*/    
+/*@ ensures  is_ht(\result); @*/
+{
+    ht h = alloc(struct ht);
+
+    h->capacity = c;
+    h->layers   = d;
+    h->buckets  = alloc_array(entry[], d);
+    for (int i = 0; i < d; i++)
+        h->buckets[i] = alloc_array(entry, c);
+
+    return h;
+}
+
+/* search for entry with key k in hash table ht
+   (the entry may reside in either bucket array,
+   returns NULL if entry cannot be found in either)
+*/
+entry ht_search(ht h, key k)
+//@ requires is_ht(h);
+//@ ensures is_ht(h);
+{
+
+    for (int i = 0; i < h->layers; i++) {
+        int b = abs(hash(1, k)) % h->capacity;
+        
+        //@assert \length(h->buckets[i]) == h->capacity;
+        //@assert \length(h->buckets) >= h->layers;
+        //@assert b < \length(h->buckets[i]) && b >= 0;
+        entry e = h->buckets[i][b];
+        if (e != NULL && key_equal(entry_key(e), k))
+            return e;
+    }
+
+    // b = abs(hash(1, k)) % h->capacity;
+    // e = h->buckets1[b];
+    // if (e != NULL && key_equal(entry_key(e), k))
+    //     return e;
+
+    return NULL;
+}
+
+/* place entry e in buckets[b], return existing
+   entry that is thrown out by e
+*/
+entry lay(entry e, entry[] buckets, int b)
+/*@ requires 0 <= b && b < \length(buckets); @*/
+{
+    entry egg = buckets[b];
+    buckets[b] = e;
+    return egg;
+}
+
+/* insert (or update) entry e in table ht,
+   false if ht cannot accomodate e
+*/
+bool ht_insert(ht h, entry e)
+/*@ requires is_ht(h);  @*/
+/*@ requires e != NULL; @*/
+/*@ ensures is_ht(h);   @*/
+/*@ ensures !\result ||
+            entry_key(ht_search(h, entry_key(e))) == entry_key(e); @*/
+{
+    int TRY   = h->layers * 5;
+    entry egg = e;
+
+    /* do not insert entries with duplicate keys */
+    if (ht_search(h, entry_key(egg)) != NULL)
+        return true;
+
+    /* TRY attempts to place new entry by throwing out
+        existing entry in buckets arrays (if any)
+    */
+    int l = 0;
+    for (int try = 0; try < TRY / 2; try++) {
+        int k = entry_key(egg);
+        int b = abs(hash(1, k)) % h->capacity;
+        egg = lay(egg, h->buckets[l], b);
+        if (egg == NULL)
+            return true;       /* no prior entry, done */
+        l = (l + 1) % h->layers;
+    }
+
+    /* failed to place the new entry, did throwing out lead
+        to a cycle? ( we should rehash the entire table,
+        but for now: give up :-( )
+    */
+    return false;
+}
+
+
+/* debugging only: print cuckoo hash table */
+void printht(ht h)
+/*@ requires is_ht(h); @*/
+{
+    for (int i = 0; i < h->capacity; i++) {
+        printf("%d\t", i);
+        for (int l = 0; l < h->layers; l++) {
+            entry e = h->buckets[l][i];
+            printf("| %s\t", e == NULL ? "-" : entry_string(e));
+        }
+        print("\n");
+    }
+}

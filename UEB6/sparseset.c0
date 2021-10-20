@@ -1,0 +1,93 @@
+#use <string>
+#use <conio>
+
+typedef struct sparse_set* sparse_set;
+
+// Set using a sparse and dense array
+struct sparse_set {
+    int[] sparse;
+    int[] dense;
+    int n;
+    int s;
+};
+
+// Create new empty set of size `size`
+sparse_set sparse_new(int size) {
+    sparse_set s = alloc(struct sparse_set);
+    s->dense = alloc_array(int, size);
+    s->sparse = alloc_array(int, size);
+    s->n = 0;
+    s->s = size;
+    return s;
+}
+
+
+// Check if the set `s` is empty
+bool sparse_is_empty(sparse_set s) {
+    return s->n == 0;
+}
+
+// Clear all contents of set `s` whilst keeping it´s size.
+void sparse_empty(sparse_set s) 
+//@ensures sparse_is_empty(s);
+{
+    s->n = 0;
+}
+
+// Check if `s` contains `x`
+bool sparse_mem(sparse_set s, int x) 
+//@requires x >= 0 && x < s->s;
+{
+    return s->sparse[x] < s->n && s->dense[s->sparse[x]] == x;
+}
+
+// Add `x` to `s`
+void sparse_add(sparse_set s, int x) 
+//@requires x >= 0 && x < s->s;
+{
+    if (!sparse_mem(s, x)) {
+        s->dense[s->n] = x;
+        s->sparse[x] = s->n;
+        s->n++;
+    }
+}
+
+// Get string representation of `s`
+string sparse_out(sparse_set s) 
+//@requires \length(s->dense) >= s->n;
+{
+    string repr = "{";
+    bool first = true;
+    for (int i = 0; i < s->n; i++) {
+        repr = string_join(
+            repr,
+            string_join(
+                i == 0 ? "" : ", ",
+                string_fromint(s->dense[i])
+            )
+        );
+    }
+    return string_join(
+        repr,
+        "}"
+    );
+}
+
+// Test/demonstrate all bit_set-Functions
+void test_sparse_set() {
+    sparse_set test = sparse_new(100);
+    print("Empty Set `test = sparse_new(100)`: ");
+    println(sparse_out(test));
+    sparse_add(test, 33);
+    sparse_add(test, 67);
+    print("After `sparse_add(test, 33)` and `sparse_add(test, 67)`: ");
+    println(sparse_out(test));
+    print("`sparse_mem(test, 42)`: ");
+    printbool(sparse_mem(test, 42));
+    print("\n`sparse_mem(test, 67)`: ");
+    printbool(sparse_mem(test, 67));
+    print("\n");
+    sparse_empty(test);
+    print("After `sparse_empty(test)`: ");
+    println(sparse_out(test));
+}

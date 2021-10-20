@@ -1,0 +1,238 @@
+#use <conio>
+#use <string>
+#use <util>
+
+struct rendernode {
+  struct rendernode* left;
+  struct rendernode* right;
+
+  string key;
+  int key_width;
+
+  int edge_length;
+  int height;
+
+  int parent;   /* -1/1: parent to the left/right, 0: I'm root */
+};
+typedef struct rendernode* rendernode;
+
+void left_profile(int[] lprofile, rendernode node, int x, int y)  {
+  int is_left;
+  
+  if (node == NULL) 
+    return;
+  
+  is_left = (node->parent == -1) ? 1 : 0;
+    
+  lprofile[y] = min(lprofile[y], x - ((node->key_width - is_left) / 2));
+
+  if (node->left != NULL) 
+    for (int i = 1; i <= node->edge_length; i++)
+      lprofile[y + i] = min(lprofile[y + i], x - i);
+
+  left_profile(lprofile, node->left,
+               x - node->edge_length - 1,
+               y + node->edge_length + 1);   /* ← */
+  left_profile(lprofile, node->right,
+               x + node->edge_length + 1,
+               y + node->edge_length + 1);
+}
+
+void right_profile(int[] rprofile, rendernode node, int x, int y) {
+  int not_left;
+
+  if (node == NULL)
+    return;
+
+  not_left = (node->parent != -1) ? 1 : 0;
+
+  rprofile[y] = max(rprofile[y], x + ((node->key_width - not_left) / 2));
+
+  if (node->right != NULL)
+    for (int i = 1; i <= node->edge_length; i++)
+      rprofile[y + i] = max(rprofile[y + i], x + i);
+
+  right_profile(rprofile, node->left,
+                x - node->edge_length - 1,
+                y + node->edge_length + 1);
+  right_profile(rprofile, node->right,
+                x + node->edge_length + 1,
+                y + node->edge_length + 1);
+}
+
+void edge_lengths(int[] lprofile, int[] rprofile, rendernode node) {
+  int h;
+  int hmin;
+  int delta = 4;
+  int gap   = 3;
+  int oo    = int_max();
+
+  if (node == NULL)
+    return;
+
+  edge_lengths(lprofile, rprofile, node->left);
+  edge_lengths(lprofile, rprofile, node->right);
+
+  /* first fill in the edge_length of node */
+  if (node->right == NULL && node->left == NULL)
+    node->edge_length = 0;
+  else {
+    if (node->left != NULL) {
+      for (int i = 0; i < node->left->height; i++)
+        rprofile[i] = -oo;
+
+      right_profile(rprofile, node->left, 0, 0);
+      hmin = node->left->height;
+    }
+    else
+      hmin = 0;
+
+    if (node->right != NULL) {
+      for (int i = 0; i < node->right->height; i++)
+        lprofile[i] = oo;
+
+      left_profile(lprofile, node->right, 0, 0);
+      hmin = min(node->right->height, hmin);
+    }
+    else
+      hmin = 0;
+
+    for (int i = 0; i < hmin; i++)
+      delta = max(delta, gap + 1 + rprofile[i] - lprofile[i]);
+
+    node->edge_length = ((delta + 1) / 2) - 1;
+  }
+
+  h = 1;
+  if (node->left != NULL)
+    h = max(node->left->height + node->edge_length + 1, h);
+  if (node->right != NULL)
+    h = max(node->right->height + node->edge_length + 1, h);
+
+  node->height = h;
+}
+
+rendernode build_rendertree(tree t) {
+  rendernode node;
+
+  if (t == NULL)
+    return NULL;
+
+  node = alloc(struct rendernode);
+
+  node->left  = build_rendertree(t->left);
+  node->right = build_rendertree(t->right);
+
+  if (node->left != NULL)
+    node->left->parent = -1;
+  if (node->right != NULL)
+    node->right->parent = 1;
+
+  node->key = elem_string(t->key);
+  node->key_width = string_length(node->key);
+
+  return node;
+}
+
+rendernode rendertree(tree t) {
+  rendernode node;
+
+  if (t == NULL)
+    return NULL;
+
+  node = build_rendertree(t);
+  node->parent = 0;
+
+  return node;
+}
+
+int spaces(int n)
+/*@ requires n >= 0; @*/
+{
+  for (int i = 0; i < n; i++)
+    printchar(' ');
+
+  return n;
+}
+
+int print_level(int v_offset, rendernode node, int x, int level) {
+  int is_left;
+
+  if (node == NULL)
+    return v_offset;
+
+  is_left = (node->parent == -1) ? 1 : 0;
+
+  if (level == 0) {
+    v_offset += spaces(x - v_offset - ((node->key_width - is_left) / 2));
+
+    print(node->key);
+    v_offset += node->key_width;
+  }
+  else if (node->edge_length >= level) {
+    if (node->left != NULL) {
+      v_offset += spaces(x - v_offset - level);
+
+      printchar('/');
+      v_offset++;
+    }
+    if (node->right != NULL) {
+      v_offset += spaces(x - v_offset + level);
+
+      printchar('\\');
+      v_offset++;
+    }
+  }
+  else {
+    /*@ assert node->edge_length < level; @*/
+
+    v_offset = print_level(v_offset, node->left,
+                           x - node->edge_length - 1,
+                           level - node->edge_length - 1);
+    v_offset = print_level(v_offset, node->right,
+                           x + node->edge_length + 1,
+                           level - node->edge_length - 1);
+  }
+
+  return v_offset;
+}
+
+void printtree(tree t) {
+  rendernode root;
+
+  int MAX_HEIGHT = 1000;
+  int[] lprofile = alloc_array(int, MAX_HEIGHT);
+  int[] rprofile = alloc_array(int, MAX_HEIGHT);
+  int oo         = int_max();
+  int v_offset;
+  int xmin;
+
+  if (t == NULL)
+    return;
+
+  root = rendertree(t);
+
+  edge_lengths(lprofile, rprofile, root);
+
+  /*@ assert root->height < MAX_HEIGHT; @*/
+
+  for (int i = 0; i < root->height; i++)
+    lprofile[i] = oo;
+  left_profile(lprofile, root, 0, 0);
+
+  xmin = 0;
+  for (int i = 0; i < root->height; i++)
+    xmin = min(xmin, lprofile[i]);
+
+  for (int i = 0; i < root->height; i++) {
+    v_offset = print_level(0, root, -xmin, i);
+    printchar('\n');
+  }
+}
+
+void printbst(bst b)
+/*@ requires b != NULL; @*/    
+{
+  printtree(b->root);
+}
+

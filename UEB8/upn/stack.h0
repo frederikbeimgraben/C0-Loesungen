@@ -1,0 +1,31 @@
+/* List interface */
+
+struct slist;
+typedef struct slist* slist;
+
+/* can we reach `to' if we start traversing from `from'? */
+/* NB: endless iteration in presence of cycles! */
+bool sreachable(slist from, slist to);
+
+/* Stacks (LIFO) interface */
+
+/* the abstract stack type */
+struct stack;
+typedef struct stack* stack;
+
+/* operations */
+bool stack_is_empty(stack s)        /* does s contain elements? */
+/*@requires s != NULL; @*/;
+
+stack stack_new()                   /* create new empty stack */
+/*@ensures \result != NULL && stack_is_empty(\result); @*/;
+
+elem stack_pop(stack s)             /* remove element at top of s */
+/*@requires s != NULL && !stack_is_empty(s); @*/;
+
+elem stack_top(stack s)             /* inspect element at top of s */
+/*@requires s != NULL && !stack_is_empty(s); @*/;
+
+stack stack_push(stack s, elem e)   /* place element e on top of s */
+/*@requires s != NULL;                           @*/
+/*@ensures  !stack_is_empty(\result);            @*/;

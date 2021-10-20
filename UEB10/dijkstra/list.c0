@@ -1,0 +1,31 @@
+/* List implementation */
+
+struct list {
+    lelem        elem;
+    struct list* next;
+};
+
+
+bool list_is_empty(list l)            /* check if list is empty */
+{ return l == NULL; }
+
+
+list list_new()                       /* create new empty list */
+/*@ensures list_is_empty(\result); @*/
+{ return NULL; }
+
+list list_prepend(list l, lelem e)     /* place element e at start of l */
+{
+    list new = alloc(struct list);
+    new->elem = e;
+    new->next = l;
+    return new;
+}
+
+bool list_contains(list l, lelem e) /* check if l contains e */
+{
+    for (list walk = l; walk != NULL; walk = walk->next)
+        if (walk->elem == e)
+            return true;
+    return false;
+}

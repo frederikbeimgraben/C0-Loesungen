@@ -1,0 +1,100 @@
+// UEB 7, Aufg. 2 (coprimes.c0); 
+// BEIMGRABEN, Frederik Matti; Abg. Mi. 23.06.21
+
+#use <conio>
+#use <util>
+#use <rand>
+#use <file>
+#use <clock>
+
+// Calculates the greatest common divisor of `a` and `b`
+int gcd(int a, int b) 
+//@requires a > 0 && b > 0;
+//@ensures a % \result == 0;
+//@ensures b % \result == 0;
+{   
+    int ai = a; // temporary copies
+    int bi = b;
+    while (bi != 0) {
+        int tmp = ai % bi;
+        ai = bi;
+        bi = tmp;
+    }
+    return ai;
+}
+
+// Returns one integer read from a file handle
+int random(file_t f) 
+//@requires f != NULL;
+//@ensures \result > 0;
+{
+    int[] xs = alloc_array(int, 1);
+    file_readints(f, xs, 1);
+    return abs(xs[0]);
+}
+
+/* Returns `1` if `a` and `b` have no common divisor except `1`.
+ * Otherwise returns `0`.
+ */
+int no_gcd(int a, int b) 
+//@requires a > 0 && b > 0;
+//@ensures \result == 0 || \result == 1;
+{
+    return gcd(a, b) == 1 ? 1 : 0;
+}
+
+/* Estimates the probability of two random numbers of having a common 
+ * divisor except `1` using either buitin `<rand>` (r == true) or the
+ * system random generator `/dev/urandom` with `N` iterations.
+ * `N` must be greater or equal to `100`.
+ * Otherwise `(N / 100) == 0` and thus `sum / (N / 100)` ⇝ div. error
+ */
+int coprimes(int N, bool r) 
+//@requires N >= 100;
+//@ensures \result >= 0 && \result <= 100;
+{
+    int s_bi = 0;
+    int s_ur = 0;
+    rand_t gen = init_rand(now());
+    file_t f   = file_read("/dev/urandom");
+    for (int i = 0; i < N; i++) {
+        if (r)
+            s_bi += no_gcd(abs(rand(gen)) + 1, abs(rand(gen)) + 1);
+        else
+            s_ur += no_gcd(abs(random(f)) + 1, abs(random(f)) + 1);
+    }
+    return (r ? s_bi : s_ur) / (N / 100);
+}
+
+// Main *(redundant comment)*
+int main() {
+    // using builtin
+    printf(
+        "%d%c coprimes (using  builtin)\n", 
+        coprimes(100000, true), 
+        '%'
+    );
+
+    // using /dev/urandom
+    printf(
+        "%d%c coprimes (using  /dev/urandom)\n", 
+        coprimes(100000, false), 
+        '%'
+    );
+
+    /*
+        80% coprimes (using  builtin)
+        61% coprimes (using  /dev/urandom)
+
+        Mit dem (schlechteren) integrierten Zufallsgenerator erhält man eine 
+        Abweichung von ca. 20%, die jedoch darauf zurückzuführen ist, dass es
+        sich bei <rand> um einen Pseudozufallsgenerator handelt, der im gegen-
+        satz zu `/dev/urandom` eine gewisse Regelmäßigkeit beinhaltet.
+        Mit dem (besseren) Zufallsgenerator `/dev/urandom` stimmt das Ergebnis
+        mit der Behauptung von @fermatslibrary überein.
+
+        Dementsprechend scheint @fermatslibrary richtig zu liegen.
+    */
+
+    return 0;
+}

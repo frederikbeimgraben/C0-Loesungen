@@ -1,0 +1,97 @@
+#use <conio>
+#use <util>
+
+/* Erzeugt aus dem eingegebenen `int` `n` ein `bool`-Array mit der 
+ * Länge `32`, das der Bitrepresentation von `n` entspricht und gibt
+ * dieses zurück.
+ */
+bool[] int_to_bits(int n)
+/*@ensures \length(\result) == 32; @*/ // Eine Precondition ist hier unsinnig
+{
+    bool[] res = alloc_array(bool, 32);
+    for (int i = 0; i < 32; i++) {
+        // `(n & (1 << i)) != 0` ist äquivalent zu is_bit_set(n, i)
+        // Da ich es nur ein mal brauche spare ich mir die Funktionsdefinition.
+        res[31-i] = (n & (1 << i)) != 0;
+    }
+    return res;
+}
+
+/* Erzeugt aus dem `bool`-Array `b` der Länge `32`, welches der 
+ * Bitrepresentation eines `int` entspricht einen `int` und gibt diesen zurück
+ */
+int bits_to_int(bool[] b) 
+/*@ requires \length(b) == 32; @*/ // Eine Postcondition ist hier unsinnig
+{
+    // Ergebniswert
+    int res = 0;
+    for (int i = 0; i < 32; i++) {
+        // Wenn Bit `b[i]` gesetzt, dann addiere `1 << i` zum Ergebniswert.
+        res += (b[32-i-1] ? 1 : 0) << i;
+    }
+    return res;
+}
+
+/* Addiert die beiden `bool`-Arrays (mit der Länge `32`) 
+ * `a` und `b` auf Bitebene und gibt das Ergebnis zurück.
+ */
+bool[] add(bool[] a, bool[] b) 
+/*@ ensures  bits_to_int(a) + bits_to_int(b) == bits_to_int(\result); @*/
+/*@ requires \length(b) == 32 && \length(a) == 32; @*/
+{
+    // Ergebnisarray definieren
+    bool[] res = alloc_array(bool, 32);
+    // Carry-Bit mit `false` initialisieren
+    bool carry = false;
+    // `for`-Schleife, die sich von "rechts" aus durch das Array arbeitet.
+    for (int i = 31; i >= 0; i--) {
+        // Carry-Bit von letztem Schritt übertragen
+        res[i] = carry;
+        // Neuen Carry-Bit-Wert ermitteln
+        carry = (res[i] && a[i]) || (res[i] && b[i]) || (a[i] && b[i]);
+        // Aktuellen Ergebnisbit setzen.
+        res[i] = (
+            (!carry && (res[i] || a[i] || b[i])) || 
+                       (res[i] && a[i] && b[i])
+        );
+    }
+    return res;
+}
+
+/* Berechnet das Zweierkomplement des `bool`-Arrays `b` (mit der Länge `32`)
+ * und gibt dieses zurück. Dabei gilt für das Zweierkomplement:
+ * > (Zweierkomplement)(bits) = (Invertierung bzw. Einserkomplement)(bits) + 1
+ */
+bool[] twos_complement(bool[] b)
+/*@ ensures  bits_to_int(b) == -bits_to_int(\result); @*/ 
+/*@ requires \length(b) == 32; @*/
+{
+    // Ergebnisarray definieren
+    bool[] res = alloc_array(bool, 32);
+    // Einserkomplement bilden
+    for (int i = 0; i < 32; i++) {
+        res[i] = !b[i];
+    }
+    // `1` Addieren
+    bool carry = true;
+    for (int i = 31; carry && i >= 0; i--) {
+        carry  = carry && res[i];
+        res[i] = !carry;
+    }
+    return res;
+}
+
+/* Addiert das `bool`-Array `b` (mit der Länge `32`) 
+ * vom `bool`-Array `a` auf Bitebene und gibt das Ergebnis zurück.
+ */
+bool[] sub(bool[] a, bool[] b) 
+/*@ ensures  bits_to_int(a) - bits_to_int(b) ==  bits_to_int(\result); @*/
+/*@ requires \length(b) == 32 && \length(a) == 32; @*/
+{
+    // Der gewünschte "One-Liner":
+    return add(a, twos_complement(b));
+}
+
+int main() {
+    return 0;
+}

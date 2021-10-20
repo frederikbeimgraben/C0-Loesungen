@@ -1,0 +1,23 @@
+#use <conio>
+#use <dub>
+#use <string>
+typedef dub d;d f(d l,d x,int i,int b) {d v=dmul(l,dmul(x,dsub(itod(1),x)));if(i>0){int r=(dtoi(dmul(v,itod(127)))+0)^dtoi(dmul(l,itod(2)))^dtoi(dmul(v,itod(10)));while(r>=127){r=r/2;}if(i<b)printchar(char_chr(r<0?-r:r));return f(l,v,i-1,b);}return itod(0);}
+
+int main() {
+    f(
+        ddiv(itod(3776),itod(1000)),
+        ddiv(itod(5000),itod(10000)),
+        40,
+        30
+    );
+    print("\n");
+    f(
+        ddiv(itod(3777),itod(1000)),
+        ddiv(itod(5000),itod(10000)),
+        40,
+        30
+    );
+    print("\n");
+    return 0;
+}
+

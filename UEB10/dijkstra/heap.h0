@@ -1,0 +1,40 @@
+/* Priority Queues (PQs, Heaps) with integer elements */
+
+/* PQ interface (client-side):
+   - type helem
+   - functions:
+*/
+
+/* compare elements e1, e2:
+   e1 < e2: < 0, e1 == e2: 0, e1 > e2: > 0
+*/
+int compare(helem e1, helem e2);
+
+/* PQ interface (library-side) */
+
+struct heap;
+typedef struct heap* heap;
+
+/* create empty PQ of size c */
+heap heap_new(int c)
+  /*@requires c > 0; @*/;
+
+/* is PQ empty? */
+bool heap_empty(heap h)
+  /*@requires h != NULL; @*/;
+
+/* is PQ full? */
+bool heap_full(heap h)
+  /*@requires h != NULL; @*/;
+
+/* insert element e into PQ h */
+void heap_insert(heap h, helem e)
+  /*@requires h!= NULL && !heap_full(h); @*/;
+
+/* peek at element with highest priority in h */
+helem heap_min(heap h)
+  /*@requires h!= NULL && !heap_empty(h); @*/;
+
+/* remove and return element with highest priority in h */
+helem heap_delmin(heap h)
+  /*@requires h!= NULL && !heap_empty(h); @*/;

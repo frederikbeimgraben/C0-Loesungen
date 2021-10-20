@@ -1,0 +1,27 @@
+/* Use a cuckoo hash table to maintain a set of integers */
+
+#use <string>
+
+typedef int* entry;  /* (pointer to) hash table entry */
+typedef int  key;    /* entries are their own keys */
+
+int hash(key k)
+{
+  return k;
+}
+
+bool key_equal(key k1, key k2) {
+  return k1 == k2;
+}
+
+key entry_key(entry e)
+/*@ requires e != NULL; @*/
+{
+  return *e;     /* the element *is* the key */
+}
+
+string entry_string(entry e)
+/*@ requires e != NULL; @*/
+{
+  return string_fromint(*e);
+}

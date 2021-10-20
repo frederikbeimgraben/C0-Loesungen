@@ -1,0 +1,36 @@
+/* Binary Search Tree (BSTs) */
+
+/* BST interface (client-side):
+   - type elem (pointer to elements)
+   - functions:
+*/
+
+/* compare elements e1, e2:
+   e1 < e2: < 0, e1 == e2: 0, e1 > e2: > 0 
+*/
+int compare(elem e1, elem e2);
+
+/* debugging only: map element to printable string (BST printing) */
+string elem_string(elem e)
+    /*@ requires e != NULL; @*/;
+
+
+/* BST interface (library-side) */
+
+struct bst;
+typedef struct bst* bst;
+
+/* create new (empty) BST */
+bst bst_new()
+    /*@ ensures \result != NULL; @*/;
+
+/* insert elem e into BST b */
+void bst_insert(bst b, elem e)
+    /*@ requires b != NULL && e != NULL; @*/;
+
+/* search for e in b (NULL if not found) */
+elem bst_search(bst b, elem e)
+    /*@ requires b != NULL && e != NULL; @*/;
+
+void bst_delete(bst b, elem e) 
+    /*@requires e != NULL && b != NULL;@*/;

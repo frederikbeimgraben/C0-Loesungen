@@ -1,0 +1,17 @@
+#use "hash_preq.c0"
+#use "hash.c0"
+#use <conio>
+
+int main() {
+    htable h = htable_new(1000);
+
+    htable_set(h, "A", "B");
+    htable_set(h, "B", "C");
+
+    print(htable_get(h, "A"));
+    
+    print(htable_get(h, "B"));
+
+
+    return 0;
+}

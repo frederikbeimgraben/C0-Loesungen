@@ -1,0 +1,96 @@
+#use <conio>
+#use <string>
+
+typedef struct bit_set* bit_set;
+
+// Set using a single array
+struct bit_set {
+    bool[]  b;
+    int     s;
+};
+
+// Create new empty set of size `size`
+bit_set bit_new(int size) 
+//@requires size >= 0;
+//@ensures  \length(\result->b) == size;
+//@ensures  \result->s == size;
+{
+    bit_set s = alloc(struct bit_set);
+    s->b = alloc_array(bool, size);
+    s->s = size;
+    return s;
+}
+
+// Check if the set `s` is empty
+bool bit_is_empty(bit_set s) 
+//@requires \length(s->b) == s->s;
+{
+    for (int i = 0; i < s->s; i++)
+        if (s->b[i]) return false;
+    return true;
+}
+
+// Clear all contents of set `s` whilst keeping it´s size.
+void bit_empty(bit_set s) 
+//@requires \length(s->b) == s->s;
+//@ensures  bit_is_empty(s);
+{
+    for (int i = 0; i < s->s; i++)
+        s->b[i] = false;
+}
+
+// Check if `s` contains `x`
+bool bit_mem(bit_set s, int x) 
+//@requires x >= 0 && x < s->s;
+{
+    return s->b[x];
+}
+
+// Add `x` to `s`
+void bit_add(bit_set s, int x) 
+//@requires x >= 0 && x < s->s;
+{
+    s->b[x] = true;
+}
+
+// Get string representation of `s`
+string bit_out(bit_set s) 
+//@requires \length(s->b) == s->s;
+{
+    string repr = "{";
+    bool first = true;
+    for (int i = 0; i < s->s; i++)
+        if (bit_mem(s, i)) {
+            repr = string_join(
+                repr,
+                string_join(
+                    first ? "" : ", ",
+                    string_fromint(i)
+                )
+            );
+            first = false;
+        }
+    return string_join(
+        repr,
+        "}"
+    );
+}
+
+// Test/demonstrate all bit_set-Functions
+void test_bit_set() {
+    bit_set test = bit_new(100);
+    print("Empty Set `test = bit_new(100)`: ");
+    println(bit_out(test));
+    bit_add(test, 33);
+    bit_add(test, 67);
+    print("After `bit_add(test, 33)` and `bit_add(test, 67)`: ");
+    println(bit_out(test));
+    print("`bit_mem(test, 42)`: ");
+    printbool(bit_mem(test, 42));
+    print("\n`bit_mem(test, 67)`: ");
+    printbool(bit_mem(test, 67));
+    print("\n");
+    bit_empty(test);
+    print("After `bit_empty(test)`: ");
+    println(bit_out(test));
+}

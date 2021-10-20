@@ -1,0 +1,239 @@
+/* BST (non-balanced binary search trees) */
+#use <util>
+
+struct tree {
+  elem         key;
+  struct tree* left;     /* subtrees */
+  struct tree* right;    /* leaf ⇔  left == NULL && right == NULL */
+};
+typedef struct tree* tree;
+
+struct bst {
+  tree root;
+  /* add further tree meta data here if needed ... */
+};
+
+
+/* does tree t respect the ordering invariant Ⓞ?
+
+   NB: this function FAILS at checking the invariant,
+   (checks ordering for local parent/child pairs only)
+*/
+bool is_ordtree_buggy(tree t) {
+  /* an empty tree is ordered */
+  if (t == NULL)
+    return true;
+
+  /* compare parent/child keys */
+  if (t->left != NULL && compare(t->left->key, t->key) > 0)
+    return false;
+  if (t->right != NULL && compare(t->right->key, t->key) < 0)
+    return false;
+
+  /* left and right subtrees need to be ordered */
+  return is_ordtree_buggy(t->left) && is_ordtree_buggy(t->right);
+}
+
+/* key stored in t has to be in range (lower, upper)
+   (lower range NULL indicates -∞, upper range NULL indicates +∞)
+ */
+bool inside_range(tree t, elem lower, elem upper) {
+  if (t == NULL)
+    return true;
+
+  if (lower != NULL && compare(lower, t->key) >= 0)
+    return false;
+  if (upper != NULL && compare(upper, t->key) <= 0)
+    return false;
+
+  return inside_range(t->left, lower, t->key)
+         &&
+         inside_range(t->right, t->key, upper);
+}
+
+/* does tree t respect the ordering invariant? */
+bool is_ordtree(tree t) {
+  return inside_range(t, NULL, NULL);
+}
+
+/* does binary search tree b respect the ordering invariant? */
+bool is_bst(bst b)
+/*@ requires b != NULL; @*/    
+{
+  return is_ordtree(b->root);
+}
+
+/* create a new (and empty) binary search tree */
+bst bst_new()
+/*@ ensures is_bst(\result); @*/
+{
+  bst b = alloc(struct bst);
+
+  b->root = NULL;
+
+  return b;
+}
+
+/* insert element e into binary search tree t */
+tree tree_insert(tree t, elem e)
+/*@ requires e != NULL; @*/
+/*@ requires is_ordtree(t); @*/
+/*@ ensures is_ordtree(\result); @*/
+{
+  int c;
+
+  /* found the empty subtree in which e needs to live */
+  if (t == NULL) {
+    tree leaf = alloc(struct tree);
+
+    leaf->key   = e;
+    leaf->left  = NULL;
+    leaf->right = NULL;
+
+    return leaf;
+  }
+
+  c = compare(e, t->key);
+
+  if (c == 0)
+    t->key = e;       /* overwrite existing entry */
+  else if (c < 0)
+    t->left = tree_insert(t->left, e);
+  else
+    /*@ assert c > 0; @*/
+    t->right = tree_insert(t->right, e);
+
+  return t;
+}
+
+/* insert element e into binary search tree t */
+void bst_insert(bst b, elem e)
+/*@ requires e != NULL; @*/
+/*@ requires is_bst(b); @*/
+/*@ ensures  is_bst(b); @*/
+{
+  b->root = tree_insert(b->root, e);
+}
+
+/* search for e in binary search tree t, yields NULL if not present */
+elem tree_search(tree t, elem e)
+/*@ requires e != NULL; @*/    
+/*@ requires is_ordtree(t); @*/
+/*@ ensures  \result == NULL || compare(e, \result) == 0; @*/
+{
+  int c;
+
+  if (t == NULL)
+    return NULL;
+
+  c = compare(e, t->key);
+
+  if (c == 0)
+    return t->key;
+  else if (c < 0)
+    return tree_search(t->left, e);
+  else
+    /*@ assert c > 0; @*/
+    return tree_search(t->right, e);
+}
+
+/* search for e in binary search tree t, yields NULL if not present */
+elem bst_search(bst b, elem e)
+/*@ requires e != NULL; @*/
+/*@ requires is_bst(b); @*/
+/*@ ensures  is_bst(b); @*/
+/*@ ensures  \result == NULL || compare(e, \result) == 0; @*/
+{
+  return tree_search(b->root, e);
+}
+
+// Returns the pointer with the higher value
+elem max_elem(elem a, elem b) 
+//@requires a != NULL && b != NULL;
+//@ensures \result != NULL;
+{
+    if (compare(a, b) == -1)
+        return b;
+    else 
+        return a;
+}
+
+// Returns the pointer with the lower value
+elem min_elem(elem a, elem b) 
+//@requires a != NULL && b != NULL;
+//@ensures \result != NULL;
+{
+    if (compare(a, b) == 1)
+        return b;
+    else 
+        return a;
+}
+
+// Returns the lowest element that is higher than e
+elem sup_elem(elem a, elem b, elem e) 
+//@requires a != NULL && b != NULL && e != NULL;
+//@ensures  \result != NULL;
+//@ensures  compare(\result, e) == 1;
+{
+    if (compare(a, e) == 1 && compare(b, e) == 1)
+        return min_elem(a, b);
+    else 
+        return max_elem(
+            a,
+            max_elem(
+                b, 
+                e
+            )
+        );
+}
+
+// Finds the next higher number following to e in t
+elem find_next(tree t, elem e) 
+//@requires e != NULL;
+//@ensures \result != NULL;
+{
+    if (t == NULL)
+        return e;
+    else if ((t->left == NULL) && (t->right == NULL))
+        return t->key;
+    else 
+        return sup_elem(
+            find_next(t->left, e),
+            find_next(t->right, e),
+            e
+        );
+}
+
+// Deletes an element e from a tree t
+tree tree_delete(tree t, elem e) 
+//@requires e != NULL;
+{
+    if (t != NULL) { 
+        if (*e < *t->key)
+            t->left  = tree_delete(t->left,  e);
+        
+        else if (*e > *t->key)
+            t->right = tree_delete(t->right, e);
+
+        else if (*e == *t->key) {
+            if (t->right == NULL)
+                return t->left;
+
+            else {
+                elem y = find_next(t->right, e);
+                t->key = y;
+                t->right = tree_delete(t->right, y);
+            }
+        }
+    }
+    return t;
+}
+
+// Deletes an element e from a binary-search-tree b
+void bst_delete(bst b, elem e) 
+//@requires e != NULL && b != NULL;
+//@requires is_bst(b);
+//@ensures  is_bst(b);
+{
+    b->root = tree_delete(b->root, e);
+}

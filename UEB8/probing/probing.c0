@@ -1,0 +1,137 @@
+/* Hash table implementation (linear probing) */
+// ALL COMMENTS ARE JUST EXTRA COMMENTS TO EXPLAIN THE IMPLEMENTATION
+// THEY ARE REDUNDANT TO THE COMMENTS IN `probing.h`!
+
+#use <conio>
+
+/* the hash table itself */
+struct ht {
+    int    capacity;      /* hash table capacity */
+    entry[] buckets;      /* array of buckets */
+                          /* invariant: \length(buckets) == capacity */
+};
+
+// Checks if `h` is a more or less optimal hash-table
+bool is_ht(ht h)
+//@requires \length(h->buckets) == h->capacity;
+{
+    int c = h->capacity;
+    for (int i = 0; i < h->capacity; i++) {
+        entry e = at(h, i);
+        if ( e != NULL ) {
+            int k = key_of(c, e);
+            for (int p = i; p != k; p = decr(p, c))
+                if (at(h, p) == NULL)
+                    return false;
+        }
+    }
+    return true;
+}
+
+// Returns optimal bucket index within `max` buckets.
+int hash_pos(int max, int k) 
+//@ensures \result < max;
+{
+    return hash(k) % max;
+}
+
+// Get key of entry
+int key_of(int c, entry e)
+//@ensures \result < c;
+{
+    return hash_pos(c, entry_key(e));
+}
+
+// Gets entry at bucket `i` within `h`
+entry at(ht h, int i) 
+//@requires \length(h->buckets) >= i;
+{
+    return h->buckets[i];
+}
+
+// Decrement with wrap-around to `mx-1`
+int decr(int c, int mx) 
+//@requires c < mx && c >= 0;
+{
+    return c-1 < 0 ? mx - 1 : c - 1;
+}
+
+// Creates a empty hash-table with `c` initial buckets
+ht ht_new(int c)
+//@ensures is_ht(\result); 
+{
+    ht h = alloc(struct ht);
+
+    h->capacity = c;
+    h->buckets = alloc_array(entry, c);
+
+    return h;
+}
+
+// Returns the first entry with key `k` within `h`
+entry ht_search(ht h, key k)
+//@requires is_ht(h);
+//@ensures  is_ht(h);
+{
+    int i = hash(k);
+    for (int j = 0; j < h->capacity; j++) {
+        entry b = h->buckets[(i+j) % h->capacity];
+        if (b == NULL) 
+            return NULL;
+        if (entry_key(b) == k)
+            return b;
+    }
+    return NULL;
+}
+
+// Expand and rehash `h`
+void ht_rehash(ht h)
+//@requires is_ht(h);
+//@ensures  is_ht(h);
+{
+    ht new = ht_new(h->capacity * 2);
+
+    for (int p = 0; p < h->capacity; p++)
+        if (h->buckets[p] != NULL)
+            ht_insert(new, h->buckets[p]);
+
+    h->capacity = new->capacity;
+    h->buckets  = new->buckets;
+}
+
+// Insert entry `e` into `h`
+void ht_insert(ht h, entry e)
+//@requires is_ht(h);
+//@ensures  is_ht(h);
+{
+    key k = entry_key(e);
+    int i = hash_pos(h->capacity, k);
+
+    for (int j = 0; j < h->capacity; j++) {
+        if (h->buckets[(i+j) % h->capacity] == NULL) {
+            h->buckets[(i+j) % h->capacity] = e;
+            return;
+        }
+    }
+
+    ht_rehash(h);
+
+    ht_insert(h, e);
+}
+
+/* debugging only: print hash table */
+void printht(ht h)
+{
+    entry l;
+
+    for (int i = 0; i < h->capacity; i++) {
+        printf("%d\t| ", i);
+
+        l = h->buckets[i];
+        printchar('[');
+        if (l != NULL) {
+            print(entry_string(l));
+        }
+        println("]");
+    }
+}

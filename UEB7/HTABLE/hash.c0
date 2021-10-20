@@ -1,0 +1,49 @@
+typedef struct key_value_pair* pair;
+typedef struct hash_table* htable;
+typedef struct el_list* list;
+
+struct key_value_pair {
+    key   k;
+    entry e;
+};
+
+struct el_list {
+    pair e;
+    list n;
+};
+
+struct hash_table {
+    list[] buckets;
+    int    c;
+};
+
+htable htable_new(int c) {
+    htable res = alloc(struct hash_table);
+    res->c = c;
+    res->buckets = alloc_array(list, c);
+    return res;
+}
+
+void htable_set(htable h, key k, entry e) {
+    pair p = alloc(struct key_value_pair);
+    p->k = k;
+    p->e = e;
+
+    int index = key_hash(k) % h->c;
+
+    list l = alloc(struct el_list);
+    l->e = p;
+    l->n = h->buckets[index];
+
+    h->buckets[index] = l;
+}
+
+entry htable_get(htable h, key k) {
+    list l = h->buckets[key_hash(k) % h->c];
+    while (l->n != NULL) {
+        if (keys_equal(l->e->k, k))
+            return l->e->e;
+        l = l->n;
+    }
+    return l->e->e;
+}

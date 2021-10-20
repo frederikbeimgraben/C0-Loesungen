@@ -1,0 +1,37 @@
+#use "elem-int.c0"
+#use <bst>
+
+#use "printbst.c0"
+
+int main() {
+  bst b   = bst_new();
+  int bst_size = 8;
+  elem[] elems = alloc_array(elem, bst_size);
+
+  for(int i = 0; i < bst_size; i++)
+    elems[i] = alloc(int);
+
+  *elems[0] = 5;
+  *elems[1] = 3;
+  *elems[2] = 7;
+  *elems[3] = 6;
+  *elems[4] = 2;
+  *elems[5] = 4;
+  *elems[6] = 9;
+  *elems[7] = 8;
+
+  for(int i = 0; i < bst_size; i++) 
+    bst_insert(b, elems[i]);
+
+  printbst(b); printchar('\n');
+
+  bst_delete(b, elems[2]);
+  printbst(b); printchar('\n');
+
+  bst_delete(b, elems[3]);
+  bst_delete(b, elems[5]);
+  bst_delete(b, elems[7]);
+  printbst(b); printchar('\n');
+
+  return 0;
+}

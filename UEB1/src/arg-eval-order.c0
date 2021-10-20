@@ -1,0 +1,35 @@
+#use <util>
+#use <conio>
+#use <string>
+
+// Print Funktion mit Rückgabewert (int 0)
+int p(string s) {
+    println(s);
+    return 0;
+}
+
+// Funktion ohne Inhalt und mit 3 Argumenten.
+int f(int a, int b, int c) {
+    return 0;
+}
+
+int main() {
+    f(p("e_1"), p("e_2"), p("e_3"));
+    return 0;
+}
+
+/*
+<!--Markdown-->
+
+Die Ausgabe in der Konsole sieht folgendermaßen aus:
+```c0
+[fb@DESKTOP-N0KE563 Informatik]$ runc0 "f:\Informatik\C0\UEB1\arg-eval-order.c0"
+e_1
+e_2
+e_3
+0
+```
+
+Hier sieht man, dass die Statements in der Reihenfolge `e_1, e_2, e_3` ausgeführt wurden.
+
+*/

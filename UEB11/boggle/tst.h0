@@ -1,0 +1,23 @@
+/* Ternary Search Tries (TSTs) */
+
+#use <string>
+
+struct tst;
+typedef struct tst* tst;
+
+/* create a new, empty TST */
+tst tst_new()
+  /*@ ensures \result != NULL; @*/;
+
+/* does string s occur in TST t? */
+bool tst_search(tst t, string s)
+  /*@ requires t != NULL; @*/
+  /*@ requires string_length(s) > 0; @*/;
+
+/* insert string s into TST t */
+void tst_insert(tst t, string s)
+  /*@ requires t != NULL; @*/
+  /*@ requires string_length(s) > 0; @*/;
+
+bool tst_has_prefix(tst t, string s)
+  /*@requires t != NULL; @*/;

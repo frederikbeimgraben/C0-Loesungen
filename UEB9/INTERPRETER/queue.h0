@@ -1,0 +1,22 @@
+/* Queues (FIFO) interface */
+
+/* the abstract queue type */
+struct queue;
+typedef struct queue* queue;
+
+/* element type */
+typedef string qelem;
+
+/* operations */
+bool queue_is_empty(queue q)        /* does q contain elements? */
+  /*@ requires q != NULL; @*/;
+
+queue queue_new()                   /* create new empty queue */
+  /*@ ensures \result != NULL && queue_is_empty(\result); @*/;
+
+void queue_enq(queue q, qelem e)    /* place element e at back of q */
+  /*@ requires q != NULL;          @*/
+  /*@ ensures  !queue_is_empty(q); @*/;
+
+qelem queue_deq(queue q)            /* remove element at head of q */
+  /*@ requires q != NULL && !queue_is_empty(q); @*/;

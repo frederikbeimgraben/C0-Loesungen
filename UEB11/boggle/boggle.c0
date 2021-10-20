@@ -1,0 +1,195 @@
+#use <conio>
+#use <rand>
+#use <string>
+#use <clock>
+#use <file>
+#use <util>
+#use <tst>
+
+/* Representation of a Boggle field */
+struct boggle {
+    int size;       /* size */
+    char[][] field; /* size x size board */
+};
+typedef struct boggle* boggle;
+
+/* 
+ * Returns a random character c
+ */
+char random_char(rand_t r)
+{
+    int lower = char_ord('a');
+    int upper = char_ord('z');
+    return char_chr((abs(rand(r)) % (upper - lower + 1)) + lower);
+}
+
+/* 
+ * Creates a new Boggle field with dimensions size x size
+ */
+boggle boggle_new(int size)
+{
+    rand_t r = init_rand(now());
+    boggle b = alloc(struct boggle);
+    b->size  = size;
+    b->field = alloc_array(char[], size);
+
+    for (int x = 0; x < size; x++) {
+        b->field[x] = alloc_array(char, size);
+        for (int y = 0; y < size; y++)
+            b->field[x][y] = random_char(r);
+    }
+
+    return b;
+}
+
+/* 
+ * Prints a Boggle field to the terminal
+ */
+void printboggle(boggle b)
+/*@requires b != NULL; @*/
+{
+    print("Boggle field with dimensions ");
+    printint(b->size); print("x"); printint(b->size);
+    println(".");
+
+    for (int y = 0; y < b->size; y++) {
+        for (int x = 0; x < b->size; x++) {
+            printchar(b->field[x][y]);
+            print(" ");
+        }
+        printchar('\n');
+    }
+}
+
+/* 
+ * Create a Ternary Search Trie from a file at path
+ */
+tst create_tst_from_file(string path)
+{
+    file_t f = file_read(path);
+    tst t    = tst_new();
+
+    while(!file_eof(f)) {
+        string s = file_readline(f);
+        tst_insert(t, s);
+    }
+
+    return t;
+}
+
+typedef struct path* path;
+// Path struct (two integers per element)
+struct path {
+    int     x;
+    int     y;
+    path next;
+};
+
+// New path (Returns NULL ≡ "EMPTY PATH")
+path path_new() 
+//@ensures \result == NULL;
+{
+    return NULL;
+}
+
+// Prepends a path by one point (x,y)
+path path_add(path prev, int x, int y) 
+//@ensures \result != NULL;
+{
+    path next  = alloc(struct path);
+    next->next = prev;
+    next->x    = x;
+    next->y    = y;
+    return next;
+}
+
+// Checks if a path contains the data pair (x,y) (No conditions necessary)
+bool path_contains(path p, int x, int y) 
+{
+    path t = p;
+    while (t != NULL) {
+        if (t->x == x && t->y == y)
+            return true;
+        t = t->next;
+    }
+    return false;
+}
+
+// Returns the string representation of p (No conditions necessary)
+string string_frompath(path p) 
+{
+    path t = p;
+    string out = "";
+    while (t != NULL) {
+        out = string_join(
+            format("(%d,%d)",t->x,t->y),
+            out
+        );
+        t = t->next;
+    }
+    return out;
+}
+
+// Recursive helper for find_words.
+void find_from(boggle b, tst t, path p, string cur)
+//@requires b != NULL;
+//@requires t != NULL;
+//@requires p != NULL;
+{
+    for (int oX = -1; oX <= 1; oX++) {
+        for (int oY = -1; oY <= 1; oY++) {
+            int x = p->x+oX;
+            int y = p->y+oY;
+            if (
+                x >= 0 && x < b->size &&
+                y >= 0 && y < b->size &&
+                !(x == p->x && y == p->y) &&
+                !path_contains(p, x, y)
+            ) {
+                char c       = b->field[x][y];
+                string cur_t = string_join(cur, string_fromchar(c));
+                path cpath   = path_add(p, x, y);
+                if (tst_has_prefix(t, cur_t)) {
+                    if (tst_search(t, cur_t)) {
+                        printf(
+                            "%s:\t%s\n",
+                            cur_t,
+                            string_frompath(cpath)
+                        );
+                        find_from(b, t, cpath, cur_t);
+                    } else {
+                        find_from(b, t, cpath, cur_t);
+                    }
+                }
+            }
+        }
+    }
+} 
+
+/* 
+ * Find any words on the Boggle field b in the ternary search trie (tst) t 
+ * and push them onto the found stack and return it
+ */ 
+void find_words(boggle b, tst t) 
+//@requires b != NULL;
+//@requires t != NULL;
+{
+    for (int x = 0; x < b->size; x++) {
+        for (int y = 0; y < b->size; y++) {
+            path p = path_new(); p = path_add(p, x, y);
+            find_from(b, t, p, string_fromchar(b->field[x][y]));
+        }
+    }
+}
+
+int main()
+{
+    boggle b = boggle_new(4);
+    tst    t = create_tst_from_file("words.txt");
+
+
+    printboggle(b);
+
+    find_words(b, t);
+    return 0;
+}

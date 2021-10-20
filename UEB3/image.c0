@@ -1,0 +1,194 @@
+#use <img>
+#use <util>
+#use <conio>
+
+/* Checks if the 2-dimensional `int`-Array `matrix` has the dimensions 
+ * `int[n][m]` using C0-dynamic checks. 
+ * If so it returns `true` - otherwise the Program is stopped 
+ */
+bool shape(int[][] matrix, int n, int m) {
+    /*@assert \length(matrix) == n; @*/
+    for (int i = 0; i < n; i++) {
+        /*@assert \length(matrix[i]) == m; @*/
+    }
+    return true;
+}
+
+
+/* Returns an `int`-matrix with `height` rows and `width` columns 
+ * containing all pixel values of the image_data `int`-array.
+ * The returned array is accessable via `pmatrix[y, x]`.
+ */
+int[][] pixel_matrix(int[] pixels, int height, int width) 
+/*@requires \length(pixels) == (height * width); @*/
+/*@ensures shape(\result, height, width); @*/
+{
+    int[][] res = alloc_array(int[], height);
+    for (int y = 0; y < height; y++) {
+        res[y] = alloc_array(int, width);
+        for (int x = 0; x < width; x++) {
+            res[y][x] = pixels[
+                y * width + x
+            ];
+        }
+    }
+    return res;
+}
+
+/* Checks the equality of two matrices (`int[][]`) `a` and `b` of
+ * the same size `n`x`m`.
+ */
+bool equal(int[][] a,  int[][] b, int n, int m) 
+/*@requires shape(a, n, m) && shape(b, n, m); @*/
+{
+    bool equal = true;
+    for (int l = 0; l < n; l++) {
+        for (int r = 0; r < m; r++) {
+            equal = equal && a[l][r] == b[l][r];
+        }
+    }
+    return equal;
+}
+
+/* Checks the equality of two images (`image_t`) `im1` and `im2` and
+ * returns `true` if equal otherwise `false`.
+ */
+bool im_equal(image_t im1, image_t im2)
+{
+    if (
+        image_height(im1) != image_height(im2) ||
+        image_width(im1) != image_width(im2)
+    ) {
+        return false;
+    }
+    int h = image_height(im1);
+    int w = image_width(im1);
+    return equal(
+        pixel_matrix(image_data(im1), h, w),
+        pixel_matrix(image_data(im2), h, w), 
+        h, 
+        w
+    );
+}
+
+/* Creates a new `image_t` from the pixel values in the pixel matrix 
+ * `matrix` with `height` rows and `width` columns.
+ */
+image_t image_from_matrix(int[][] matrix, int height, int width) 
+/*@ensures shape(matrix, height, width); @*/
+/*@ensures \length(image_data(\result)) == (height * width); @*/
+{
+    image_t res = image_create(width, height);
+    int[] data = image_data(res);
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            data[y * width + x] = matrix[y][x];
+        }
+        
+    }
+    return res;
+}
+
+/* Returns a matrix with reversed row order in `int`-matrix `xs`
+ * with `len` rows.
+ */
+int[][] reverse_x(int[][] xs, int len) 
+/*@ensures \length(\result) == \length(xs); @*/
+/*@requires \length(xs) == len; @*/
+{
+    int[][] res = alloc_array(int[], len);
+    for (int i = 1; i <= len; i++) {
+        res[i-1] = xs[len-i];
+    }
+    return res;
+}
+
+/* Returns a matrix with reversed column order in `int`-matrix `xs`
+ * with `h` rows and `w` columns.
+ */
+int[][] reverse_y(int[][] xs, int h, int w) 
+/*@ensures \length(\result) == \length(xs); @*/
+/*@requires \length(xs) == h; @*/
+{
+    int[][] res = alloc_array(int[], h);
+    for (int y = 0; y < h; y++) {
+        res[y] = alloc_array(int, w);
+        for (int x = 1; x <= w; x++) {
+            res[y][x-1] = xs[y][w-x];
+        }
+    }
+    return res;
+}
+
+/* Returns a vertically mirrored version of `image_t img`.
+ */
+image_t image_vert_mirror(image_t img) 
+/*@ensures image_height(img) == image_height(\result) &&
+           image_width(img)  == image_width(\result); @*/
+{
+    int w = image_width(img);
+    int h = image_height(img);
+    int[][] mat = pixel_matrix(image_data(img), h, w);
+    return image_from_matrix(reverse_x(mat, h), h, w);
+}
+
+/* Returns a horizontally mirrored version of `image_t img`.
+ */
+image_t image_horiz_mirror(image_t img) 
+/*@ensures image_height(img) == image_height(\result) &&
+           image_width(img)  == image_width(\result); @*/
+{
+    int w = image_width(img);
+    int h = image_height(img);
+    int[][] mat = pixel_matrix(image_data(img), h, w);
+    return image_from_matrix(reverse_y(mat, h, w), h, w);
+}
+
+/* Takes matrix (`int[][]`) `matrix` with `n` rows and `m` columns and 
+ * returns it´s transposition with `m` rows and `n` columns.
+ */
+int[][] transpose(int[][] matrix, int n, int m) 
+/*@requires shape(matrix, n, m); @*/
+/*@ensures shape(\result, m, n); @*/
+{
+    int[][] res = alloc_array(int[], m);
+    for (int r = 0; r < m; r++) {
+        res[r] = alloc_array(int, n);
+        for (int l = 0; l < n; l++) {
+            res[r][l] = matrix[l][r];
+        }
+    }
+    return res;
+}
+
+/* Returns a left rotated version of `image_t img`.
+ */
+image_t image_rotate_left(image_t img) 
+/*@ensures image_height(img) == image_width(\result) &&
+           image_width(img)  == image_height(\result); @*/
+{
+    int w = image_width(img);
+    int h = image_height(img);
+    int[][] mat = pixel_matrix(image_data(img), h, w);
+    int[][] tsp = transpose(mat, h, w);
+    return image_from_matrix(reverse_x(tsp, w), w, h);
+}
+
+// Main function with a few tests
+int main() {
+    println("`main()` is commented out. please edit file-names first");
+    // image_t im = image_load("img.png");
+    // int h = image_height(im);
+    // int w = image_width(im);
+    // image_t rotated_left = image_rotate_left(im);
+    // /*@assert image_height(rotated_left) == w &&
+    //            image_width(rotated_left) == h; @*/
+    // image_save(rotated_left, "img.rotated.png");
+    // image_t mirrored_vert = image_vert_mirror(im);
+    // /*@assert im_equal(im, image_vert_mirror(mirrored_vert));   @*/
+    // image_save(mirrored_vert, "img.mirrored_vert.png");
+    // image_t mirrored_horiz = image_horiz_mirror(im);
+    // /*@assert im_equal(im, image_horiz_mirror(mirrored_horiz)); @*/
+    // image_save(mirrored_horiz, "img.mirrored_horiz.png");
+    return 0;
+}

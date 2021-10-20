@@ -1,0 +1,74 @@
+// Uebungsblatt 8, Aufgabe 2 (upn.zip)
+/* [`probing.zip`]
+    Execute using:
+    $ cc0 -L . -w -d -x int-set.c0
+*/
+
+
+#use "hash-int.c0"
+#use <probing>
+#use <file>
+#use <util>
+
+// Generate a new entry with key `k`
+entry key_entry(key k) 
+//@ensures \result != NULL;
+//@ensures *\result == k;
+{
+    int* e = alloc(int);
+    *e = k;
+    return e;
+}
+
+// Get a random integer (greater than zero) from a file-handle
+int random(file_t f) 
+//@requires f != NULL;
+//@ensures \result > 0;
+{
+    int[] xs = alloc_array(int, 1);
+    file_readints(f, xs, 1);
+    return abs(xs[0]);
+}
+
+// Main
+int main() {
+    /* Task 5 */
+    println("Test, ob `is_ht` funktioniert: ");
+    ht h = ht_new(1);
+    ht_insert(h, key_entry(12));
+    ht_insert(h, key_entry(45));
+    ht_insert(h, key_entry(42));
+    printbool(is_ht(h));
+    println(" (sollte `true` sein): ");
+    printht(h);
+    h->buckets[1] = key_entry(42);
+    printbool(is_ht(h));
+    println(" (sollte `false` sein): ");
+    printht(h);
+
+    file_t f = file_read("/dev/urandom");
+
+    bool correct = true;
+
+    print("\nTesting `1000` random hash-arrays for functionality: \n");
+
+    for (int i = 1; i < 1000; i++) {
+        ht t = ht_new(1000);
+        for (int r = 0; r < random(f) / (int_max() / 100) + 10; r++) 
+        //@loop_invariant correct;
+        {
+            entry rand = key_entry(random(f));
+            ht_insert(t, rand);
+            correct = correct && ht_search(t, entry_key(rand)) != NULL;
+            correct = correct && is_ht(t);
+        }
+        printf("\r%d%c", i / 10 + 1, '%');
+        flush();
+    }
+    print("\n");
+    printf(
+        "Judging by the tests the library is%s working!\n",
+        correct ? "" : "n´t"
+    );
+    return 0;
+}

@@ -1,0 +1,302 @@
+#use <conio>
+#use <util>
+#use <graph>
+#use "elem.c0"
+#use <heap>
+#use <list>
+
+typedef struct result* result;
+
+// Struct to save result of Dijkstra´s algorithm
+struct result {
+    int[] prev;
+    int[] dist;
+    int   size;
+};
+
+// Create new result struct pointer
+result result_new(int[] dist, int[] prev, int size) 
+//@requires \length(prev) >= size;
+//@requires \length(dist) >= size;
+//@requires size >= 0;
+//@ensures \result != NULL;
+{
+    result res = alloc(struct result);
+    res->prev  = prev;
+    res->dist  = dist;
+    res->size  = size;
+    return res;
+}
+
+/* Check that all edgeweights in graph G are positive. */
+bool only_positive_weights(graph G)
+{
+    // Iterate through nodes
+    for (int n = 0; n < graph_size(G); n++)
+        // Iterate through node-weights
+        for (int w = 0; w < graph_size(G); w++)
+            // Is weight(G, n, w) negative?
+            if (has_edge(G, n, w) && weight(G, n, w) <= 0)
+                // If so return false
+                return false;
+    // Otherwise return true
+    return true;
+}
+
+// Create an array of length `l` exclusively filled with `f`
+int[] array_filled(int f, int l)
+//@requires l >= 0;
+//@ensures \length(\result) == l;
+//@ensures l == 0 || \result[0] == f;
+{
+    int[] arr = alloc_array(int, l);
+    for (int i = 0; i < l; i++)
+        arr[i] = f;
+    return arr;
+}
+
+/* Apply Dijkstra's algorithm to graph G starting from
+   the source node. */
+result dijkstra(graph G, int start)
+//@requires is_acyclic(G);
+//@requires in_graph(G, start);
+//@requires only_positive_weights(G);
+//@ensures \result != NULL;
+//@ensures \length(\result->prev) == G->size;
+//@ensures \length(\result->dist) == G->size;
+{
+    heap  pq    = heap_new(graph_size(G) * graph_size(G));
+    int[] dist  = array_filled(int_max(), graph_size(G));
+    int[] prev  = array_filled(-1, graph_size(G));
+    dist[start] = 0;
+    heap_insert(
+        pq, 
+        helem_new(
+            start,
+            dist[start]
+        )
+    );
+
+    while (!heap_empty(pq)) {
+        helem u = heap_delmin(pq);
+        for (int v = 0; v < graph_size(G); v++) {
+            if (has_edge(G, u->node, v)) {
+                int d = dist[u->node] + weight(G, u->node, v);
+                if (d < dist[v]) {
+                    dist[v] = d;
+                    prev[v] = u->node;
+                    heap_insert(
+                        pq, 
+                        helem_new(
+                            v,
+                            dist[v]
+                        )
+                    );
+                }
+            }
+        }
+    }
+    return result_new(dist, prev, graph_size(G));
+}
+
+/* Use Dijkstra's algorithm to find the shortest path between
+   a source and target node. */
+list shortest_path(graph G, int start, int goal)
+//@requires G != NULL;
+//@requires in_graph(G, start) && in_graph(G, goal);
+//@ensures \result != NULL;
+{
+    result r = dijkstra(G, start);
+    int[] prev = r->prev;
+    int[] dist = r->dist;
+    int   size = G->size;
+
+    int current = goal;
+    list res = list_new();
+
+    if (prev[current] == -1)
+        return list_prepend(res,  start);
+
+    res = list_prepend(res, goal);
+
+    while (current != start) {
+        current = prev[current];
+        res = list_prepend(res, current);
+    }
+
+    return res;
+}
+
+/* "Draw" a graph G in dot-file format. */
+void draw(graph G)
+//@requires G != NULL;
+{
+    print("digraph my_graph \n{\n");
+    println("\tnode [\tshape=\"circle\", ");
+    println("\t\tpenwidth=1.5,"); 
+    println("\t\tstyle=\"filled\","); 
+    println("\t\tfillcolor=\"#C0C0C0\",");
+    println("\t\tfontcolor=\"#606060\",");
+    println("\t\tcolor=\"#606060\" ];");
+    println("\tedge [penwidth=1.5, color=\"#606060\"];");
+    for (int u = 0; u < graph_size(G); u++)
+        for (int v = 0; v < graph_size(G); v++)
+            if (has_edge(G, u, v))
+                printf(
+                    "\t%s -> %s [label=\"%s\"];\n",
+                    string_fromint(u),
+                    string_fromint(v),
+                    string_fromint(
+                        weight(
+                            G,
+                            u,
+                            v
+                        )
+                    )
+                );
+    print("}\n");
+}
+
+// Does `l` contain a successing pair of `a` and `b`?
+bool list_contains_pair(list l, int a, int b)
+{
+    if (l == NULL) return false;
+    for (list c = l; c->next != NULL; c = c->next) {
+        if (
+            c->elem == a && c->next->elem == b ||
+            c->elem == b && c->next->elem == a
+        ) return true;
+    }
+    return false;
+}
+
+/* "Draw" a graph G in dot-file format.
+   And highlight a given path! */
+void draw_with_path(graph G, list path)
+//@requires G != NULL;
+//@requires path != NULL;
+{
+    print("digraph my_graph \n{\n");
+    println("\tnode [\tshape=\"circle\", ");
+    println("\t\tpenwidth=1.5,"); 
+    println("\t\tstyle=\"filled\","); 
+    println("\t\tfillcolor=\"#C0C0C0\",");
+    println("\t\tfontcolor=\"#808080\",");
+    print("\t\tcolor=\"#A0A0A0\" ];");
+    for (int u = 0; u < graph_size(G); u++) {
+        for (int v = 0; v < graph_size(G); v++) {
+            if (has_edge(G, u, v)) {
+                string c = (
+                    list_contains_pair(path, u, v) ? "#FF0000" : "#A0A0A0"
+                );
+                print("\n\t");
+                printf(
+                    "%s -> %s [label=\"%s\", color=\"%s\", fontcolor=\"%s\"];",
+                    string_fromint(u),
+                    string_fromint(v),
+                    string_fromint(
+                        weight(
+                            G,
+                            u,
+                            v
+                        )
+                    ),
+                    c,
+                    c
+                );
+            }
+        }
+    }
+    for (list c = path; c != NULL; c = c->next) {
+        printf(
+            "\n\t%s",
+            string_fromint(c->elem)
+        );
+        print(" [color=\"#FF0000\", shape=\"circle\", fontcolor=\"#FF0000\"];");
+    }
+
+    print("\n}\n");
+}
+
+// Print a `list` `l` to the command line (as a path)
+void print_path(list p) 
+//@requires p != NULL;
+{
+    print("\t");
+    for (list c = p; c != NULL; c = c->next) {
+        printint(c->elem);
+        print(c->next == NULL ? "" : " -> ");
+    }
+}
+
+// Calculate travelled distance for path `p` on `G`
+int distance(list p, graph G) 
+//@requires p != NULL;
+//@requires G != NULL;
+{
+    int sum = 0;
+    for (list c = p; c->next != NULL; c = c->next) {
+        sum += weight(G, c->elem, c->next->elem);
+    }
+    return sum;
+}
+
+// Print the shortest path from `s` to all nodes `i` (`0 < i <= mx`)
+void print_all_shortest(graph G, int s) 
+//@requires G != NULL;
+//@requires in_graph(G, s);
+{
+    for (int i = 0; i < graph_size(G); i++) {
+        if (s != i) {
+            list path = shortest_path(G, s, i);
+            print_path(path);
+            printf(" (%dkm)\n", distance(path, G));
+        }
+    }
+}
+
+// Neue Main
+int main() {
+    int n = 9;
+    graph G = graph_new(n);
+    // 0
+    add_edge(G, 0,  4, 1);
+    add_edge(G, 0,  8, 7);
+    // 1
+    add_edge(G, 1, 11, 7);
+    add_edge(G, 1,  8, 2);
+    // 2
+    add_edge(G, 2,  2, 8);
+    add_edge(G, 2,  7, 3);
+    // 3
+    add_edge(G, 3,  9, 4);
+    // 4 (none)
+    // 5
+    add_edge(G, 5, 14, 3);
+    add_edge(G, 5, 10, 4);
+    add_edge(G, 5,  4, 2);
+    // 6
+    add_edge(G, 6,  9, 8);
+    add_edge(G, 6,  2, 5);
+    // 7
+    add_edge(G, 7,  7, 8);
+    add_edge(G, 7,  1, 6);
+    // 8 (none)
+
+    println("All shortest paths from `s = 0`:");
+    print_all_shortest(G, 0);
+
+    println("- - - - - - - -");
+    
+    draw(G);
+
+    println("- - - - - - - -");
+
+    list path = shortest_path(G, 0, 8);
+
+    // print_list(path);
+
+    draw_with_path(G, path);
+
+    return 0;
+}

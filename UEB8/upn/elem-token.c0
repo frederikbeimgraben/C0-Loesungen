@@ -1,0 +1,21 @@
+/* Structure to keep track of the type
+   of a token and a token itself.
+
+   It can be one of the following types:
+    - number   (0,..,9)
+    - operator (+,-,*,)
+    - parenthesis ( ( , ) )
+ */
+struct token {
+  bool op;       /* if true: operator */
+  char operator;
+
+  bool num;      /* if true: number */
+  int number;
+
+  bool paren;    /* if true: parenthesis */
+  char parenthesis;
+};
+typedef struct token* token;
+
+typedef token elem;
